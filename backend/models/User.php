@@ -42,6 +42,11 @@ class User {
             'updatedAt' => new MongoDB\BSON\UTCDateTime()
         ];
 
+        // Add password hash if provided
+        if (isset($data['passwordHash'])) {
+            $document['passwordHash'] = $data['passwordHash'];
+        }
+
         $result = $this->db->insertOne($this->collection, $document);
 
         // Fetch and return the created user
