@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/privy.php';
 require_once __DIR__ . '/../models/User.php';
 
 // Get request method and path
@@ -19,6 +20,7 @@ $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 // Initialize services
 $userModel = new User();
+$privyAuth = new PrivyAuth();
 
 // Helper function to get authorization token
 function getAuthToken() {
@@ -234,6 +236,85 @@ elseif ($method === 'PUT' && strpos($path, '/user') !== false) {
         error_log("Update user error: " . $e->getMessage());
         sendResponse(['error' => 'Server error updating user'], 500);
     }
+}
+
+// POST /auth/google - Handle Google OAuth
+elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
+    try {
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($input['email']) || !isset($input['sub'])) {
+            sendResponse(['error' => 'Google user data is required'], 400);
+        }
+
+        $email = $input['email'];
+        $name = $input['name'] ?? null;
+        $profilePicture = $input['picture'] ?? null;
+        $googleId = $input['sub'];
+
+        // Validate email
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            sendResponse(['error' => 'Invalid email format'], 400);
+        }
+
+        // Check if user exists
+        $user = $userModel->findByEmail($email);
+
+        if ($user) {
+            // User exists, update if needed
+            $updateData = [];
+            if ($name && (!isset($user->profile->name) || !$user->profile->name)) {
+                $updateData['name'] = $name;
+            }
+            if ($profilePicture && (!isset($user->profile->profilePicture) || !$user->profile->profilePicture)) {
+                $updateData['profilePicture'] = $profilePicture;
+            }
+            // Update auth provider if it was email before
+            if ($user->authProvider === 'email') {
+                $updateData['authProvider'] = 'google';
+            }
+
+            if (!empty($updateData)) {
+                $user = $userModel->update($user->privyId, $updateData);
+            }
+        } else {
+            // Create new user
+            $userData = [
+                'privyId' => 'google_' . $googleId,
+                'email' => $email,
+                'authProvider' => 'google',
+                'name' => $name,
+                'profilePicture' => $profilePicture
+            ];
+
+            $user = $userModel->create($userData);
+
+            if (!$user) {
+                sendResponse(['error' => 'Failed to create user'], 500);
+            }
+        }
+
+        // Generate token
+        $token = generateToken($user->privyId);
+
+        sendResponse([
+            'success' => true,
+            'message' => 'Google sign in successful',
+            'token' => $token,
+            'user' => $userModel->toArray($user)
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Google auth error: " . $e->getMessage());
+        sendResponse(['error' => 'Server error during Google authentication: ' . $e->getMessage()], 500);
+    }
+}
+
+// GET /auth/privy-config - Get Privy app ID for frontend
+elseif ($method === 'GET' && strpos($path, '/auth/privy-config') !== false) {
+    sendResponse([
+        'appId' => $privyAuth->getAppId()
+    ]);
 }
 
 // Route not found

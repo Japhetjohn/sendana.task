@@ -12,8 +12,9 @@ class Database {
         try {
             // Create MongoDB client
             $this->connection = new MongoDB\Driver\Manager($this->mongodb_uri);
-            echo "MongoDB connected successfully\n";
+            // Connection successful - don't echo anything to avoid breaking JSON responses
         } catch (Exception $e) {
+            error_log("MongoDB connection error: " . $e->getMessage());
             die("MongoDB connection error: " . $e->getMessage());
         }
     }

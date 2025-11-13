@@ -14,13 +14,13 @@ if (file_exists(__DIR__ . $uri)) {
     return false; // Let PHP serve the static file
 }
 
-// Route backend API requests
-if (strpos($uri, '/backend/api/auth') !== false || strpos($uri, '/backend/api/signup') !== false) {
+// Route API requests (both /backend/api and /api for convenience)
+if (strpos($uri, '/backend/api/auth') !== false || strpos($uri, '/api/auth') !== false) {
     require __DIR__ . '/backend/api/auth.php';
     exit();
 }
 
-if (strpos($uri, '/backend/api/health') !== false || strpos($uri, '/backend/health') !== false) {
+if (strpos($uri, '/backend/api/health') !== false || strpos($uri, '/api/health') !== false) {
     header('Content-Type: application/json');
     echo json_encode([
         'status' => 'ok',

@@ -1,34 +1,12 @@
 <?php
-// Try to use MongoDB if available, otherwise use JSON database
-try {
-    if (class_exists('MongoDB\Driver\Manager')) {
-        require_once __DIR__ . '/../config/database.php';
-        $useJsonDb = false;
-    } else {
-        throw new Exception('MongoDB not available');
-    }
-} catch (Exception $e) {
-    require_once __DIR__ . '/../config/json_database.php';
-    $useJsonDb = true;
-}
+require_once __DIR__ . '/../config/database.php';
 
 class User {
     private $db;
     private $collection = 'users';
-    private $useJsonDb;
 
     public function __construct() {
-        try {
-            if (class_exists('MongoDB\Driver\Manager')) {
-                $this->db = new Database();
-                $this->useJsonDb = false;
-            } else {
-                throw new Exception('MongoDB not available');
-            }
-        } catch (Exception $e) {
-            $this->db = new JsonDatabase();
-            $this->useJsonDb = true;
-        }
+        $this->db = new Database();
     }
 
     // Find user by Privy ID
@@ -62,14 +40,9 @@ class User {
             'transactions' => [],
         ];
 
-        // Handle createdAt and updatedAt based on database type
-        if ($this->useJsonDb) {
-            $document['createdAt'] = time();
-            $document['updatedAt'] = time();
-        } else {
-            $document['createdAt'] = new MongoDB\BSON\UTCDateTime();
-            $document['updatedAt'] = new MongoDB\BSON\UTCDateTime();
-        }
+        // MongoDB timestamps
+        $document['createdAt'] = new MongoDB\BSON\UTCDateTime();
+        $document['updatedAt'] = new MongoDB\BSON\UTCDateTime();
 
         // Add password hash if provided
         if (isset($data['passwordHash'])) {
@@ -105,26 +78,22 @@ class User {
             $updateData['stellarSecretKey'] = $data['stellarSecretKey'];
         }
 
-        if ($this->useJsonDb) {
-            $updateData['updatedAt'] = time();
-        } else {
-            $updateData['updatedAt'] = new MongoDB\BSON\UTCDateTime();
-        }
+        $updateData['updatedAt'] = new MongoDB\BSON\UTCDateTime();
 
         $this->db->updateOne($this->collection, ['privyId' => $privyId], $updateData);
 
         return $this->findByPrivyId($privyId);
     }
 
-    // Convert database object to array for JSON response
+    // Convert MongoDB object to array for JSON response
     public function toArray($user) {
         if (!$user) return null;
 
-        // Handle both object and array (from JSON database)
+        // Convert MongoDB object to array
         $user = is_object($user) ? (array) $user : $user;
 
         $result = [
-            'id' => $user['_id'] ?? uniqid(),
+            'id' => (string)($user['_id'] ?? uniqid()),
             'privyId' => $user['privyId'] ?? null,
             'email' => $user['email'] ?? null,
             'authProvider' => $user['authProvider'] ?? 'email',
@@ -156,15 +125,9 @@ class User {
             $result['balance']['GBP'] = $balance['GBP'] ?? 0;
         }
 
-        // Handle createdAt
-        if (isset($user['createdAt'])) {
-            if (is_numeric($user['createdAt'])) {
-                // JSON database timestamp
-                $result['createdAt'] = date('c', $user['createdAt']);
-            } elseif (is_object($user['createdAt']) && method_exists($user['createdAt'], 'toDateTime')) {
-                // MongoDB date
-                $result['createdAt'] = $user['createdAt']->toDateTime()->format('c');
-            }
+        // Handle MongoDB createdAt
+        if (isset($user['createdAt']) && is_object($user['createdAt']) && method_exists($user['createdAt'], 'toDateTime')) {
+            $result['createdAt'] = $user['createdAt']->toDateTime()->format('c');
         }
 
         return $result;
