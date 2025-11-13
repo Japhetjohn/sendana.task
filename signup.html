@@ -25,13 +25,8 @@
                     <div>
                         <h1
                             class="font-semibold text-2xl lg:text-4xl leading-full tracking-small text-col-6 mb-4 lg:mb-7">
-                            Welcome</h1>
-                        <p class="font-normal text-sm lg:text-base leading-[160%] tracking-small text-col-7">Today is a
-                            new day.
-                            It's your
-                            day.
-                            You shape it.
-                            Sign in to start managing your transactions.</p>
+                            Create Your Account</h1>
+                        <p class="font-normal text-sm lg:text-base leading-[160%] tracking-small text-col-7">Sign up today and start experiencing borderless banking. Join thousands of users managing their transactions with ease.</p>
                     </div>
                     <div>
                         <form action="#" class="grid gap-y-4 lg:gap-y-6">
@@ -45,11 +40,8 @@
                                 <input type="password" id="password" name="password" class="form-input"
                                     placeholder="At least 8 characters">
                             </div>
-                            <div class="text-right">
-                                <a class="font-normal text-sm leading-full tracking-small text-col-11" href="#">Forgot Password?</a>
-                            </div>
                             <div>
-                                <button type="submit" class="form-btn">Sign in</button>
+                                <button type="submit" class="form-btn">Sign up</button>
                             </div>
                         </form>
                     </div>
@@ -86,7 +78,7 @@
                                             </defs>
                                         </svg>
                                     </span>
-                                    <span class="max-lg:hidden lg:block">Sign in with Google</span>
+                                    <span class="max-lg:hidden lg:block">Sign up with Google</span>
                                     <span class="max-lg:block lg:hidden">Google</span>
                                 </button>
                             </div>
@@ -104,7 +96,7 @@
                                         </svg>
 
                                     </span>
-                                    <span class="hidden lg:block">Sign in with Apple</span>
+                                    <span class="hidden lg:block">Sign up with Apple</span>
                                     <span class="max-lg:block lg:hidden">Apple</span>
                                 </button>
                             </div>
@@ -113,8 +105,7 @@
                     <div>
                         <p
                             class="text-center font-roboto font-normal leading-[160%] tracking-small text-base text-col-7">
-                            Don't you
-                            have an account? <a href="signup.html" class="text-col-11">Sign up</a></p>
+                            Already have an account? <a href="index.html" class="text-col-11">Sign in</a></p>
                     </div>
                 </div>
                 <div>
@@ -206,7 +197,7 @@
             window.location.href = 'dashboard.html';
         });
 
-        // Handle Google and Apple sign in buttons
+        // Handle Google and Apple sign up buttons
         document.querySelectorAll('.extra-login-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 window.location.href = 'dashboard.html';

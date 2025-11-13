@@ -6,11 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "nodemon server/server.js",
+    "start": "node server/server.js"
   },
   "dependencies": {
     "@privy-io/react-auth": "^1.88.4",
+    "@privy-io/server-auth": "^1.32.5",
     "@stellar/stellar-sdk": "^11.3.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "mongoose": "^8.19.3",
+    "nodemon": "^3.1.11",
     "qrcode": "^1.5.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
