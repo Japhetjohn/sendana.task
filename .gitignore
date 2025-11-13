@@ -1,9 +1,7 @@
-node_modules/
-dist/
+node_modules
 .env
-__MACOSX/
-._*
+dist
 .DS_Store
 *.log
-vendor/
-.vite
+.vscode
+.idea
