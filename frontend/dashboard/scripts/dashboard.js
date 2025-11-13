@@ -1,5 +1,4 @@
 document.addEventListener("DOMContentLoaded", function () {
-  // Sidebar Js
   const sidebar = document.getElementById("sidebar");
   const sidebarToggle = document.getElementById("sidebarToggle");
   const sidebarClose = document.getElementById("sidebarClose");
@@ -43,7 +42,6 @@ document.addEventListener("DOMContentLoaded", function () {
     closeSidebar();
   });
 
-  // Close sidebar when clicking outside on mobile
   document.addEventListener("click", function (event) {
     if (
       window.innerWidth < 1024 &&
@@ -54,7 +52,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Close sidebar when resizing to desktop
   window.addEventListener("resize", function () {
     if (window.innerWidth >= 1024) {
       sidebar.classList.remove("-translate-x-full", "translate-x-0");
@@ -65,18 +62,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Dropdown Js
-
   const dropdownButton = document.getElementById("accountDropdownButton");
   const dropdownMenu = document.getElementById("accountDropdown");
 
-  // Toggle dropdown visibility
   dropdownButton.addEventListener("click", function (e) {
     e.stopPropagation();
     dropdownMenu.classList.toggle("hidden");
   });
 
-  // Close dropdown when clicking outside
   document.addEventListener("click", function (e) {
     if (
       !dropdownButton.contains(e.target) &&
@@ -86,7 +79,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   });
 
-  // Close dropdown when pressing Escape
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") {
       dropdownMenu.classList.add("hidden");
