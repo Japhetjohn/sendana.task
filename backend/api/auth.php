@@ -13,6 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/privy.php';
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../services/EmailService.php';
 
 // Get request method and path
 $method = $_SERVER['REQUEST_METHOD'];
@@ -21,6 +22,7 @@ $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 // Initialize services
 $userModel = new User();
 $privyAuth = new PrivyAuth();
+$emailService = new EmailService();
 
 // Helper function to get authorization token
 function getAuthToken() {
@@ -107,6 +109,17 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
 
         if (!$user) {
             sendResponse(['error' => 'Failed to create user'], 500);
+        }
+
+        // Send welcome email (async - don't wait for it)
+        try {
+            // Extract first name from email (before @) or use default
+            $firstName = explode('@', $email)[0];
+            $firstName = ucfirst($firstName);
+            $emailService->sendWelcomeEmail($email, $firstName);
+        } catch (Exception $e) {
+            // Log error but don't fail signup
+            error_log("Failed to send welcome email: " . $e->getMessage());
         }
 
         // Generate token
@@ -291,6 +304,17 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
 
             if (!$user) {
                 sendResponse(['error' => 'Failed to create user'], 500);
+            }
+
+            // Send welcome email to new Google user
+            try {
+                // Use Google name if available, otherwise extract from email
+                $firstName = $name ? explode(' ', $name)[0] : explode('@', $email)[0];
+                $firstName = ucfirst($firstName);
+                $emailService->sendWelcomeEmail($email, $firstName);
+            } catch (Exception $e) {
+                // Log error but don't fail signup
+                error_log("Failed to send welcome email: " . $e->getMessage());
             }
         }
 
