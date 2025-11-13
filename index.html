@@ -8,6 +8,7 @@
     <title>Sendana - Borderless Banking</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link rel="stylesheet" href="styles/login.css">
+    <script src="https://unpkg.com/@privy-io/js-sdk-core@1.88.4/dist/index.iife.js"></script>
 </head>
 
 <body>
@@ -58,56 +59,35 @@
                             <span
                                 class="font-normal text-sm leading-8.5 tracking-small text-col-12 mx-auto inline-block">Or</span>
                         </div>
-                        <div class="grid max-lg:grid-cols-2 gap-4 mt-4 lg:mt-6">
-                            <div>
-                                <button class="extra-login-btn">
-                                    <span>
-                                        <svg width="21" height="20" viewBox="0 0 21 20" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg">
-                                            <g clip-path="url(#clip0_260_28785)">
-                                                <path
-                                                    d="M20.305 10.2303C20.305 9.55056 20.2499 8.86711 20.1323 8.19836H10.7V12.0492H16.1015C15.8773 13.2911 15.1571 14.3898 14.1026 15.0879V17.5866H17.325C19.2174 15.8449 20.305 13.2728 20.305 10.2303Z"
-                                                    fill="#4285F4" />
-                                                <path
-                                                    d="M10.7 20.0007C13.397 20.0007 15.6715 19.1152 17.3287 17.5866L14.1062 15.088C13.2096 15.6979 12.0522 16.0433 10.7037 16.0433C8.0948 16.0433 5.88279 14.2833 5.08911 11.9169H1.76373V14.4927C3.46133 17.8695 6.91898 20.0007 10.7 20.0007Z"
-                                                    fill="#34A853" />
-                                                <path
-                                                    d="M5.08546 11.9169C4.66657 10.6749 4.66657 9.33008 5.08546 8.08811V5.51233H1.76376C0.345428 8.33798 0.345428 11.667 1.76376 14.4927L5.08546 11.9169Z"
-                                                    fill="#FBBC04" />
-                                                <path
-                                                    d="M10.7 3.95805C12.1257 3.936 13.5036 4.47247 14.5361 5.45722L17.3911 2.60218C15.5833 0.904588 13.1839 -0.0287217 10.7 0.000673889C6.91898 0.000673889 3.46133 2.13185 1.76373 5.51234L5.08543 8.08813C5.87543 5.71811 8.09112 3.95805 10.7 3.95805Z"
-                                                    fill="#EA4335" />
-                                            </g>
-                                            <defs>
-                                                <clipPath id="clip0_260_28785">
-                                                    <rect width="20" height="20" fill="white"
-                                                        transform="translate(0.5)" />
-                                                </clipPath>
-                                            </defs>
-                                        </svg>
-                                    </span>
-                                    <span class="max-lg:hidden lg:block">Sign in with Google</span>
-                                    <span class="max-lg:block lg:hidden">Google</span>
-                                </button>
-                            </div>
-                            <div>
-                                <button class="extra-login-btn">
-                                    <span>
-                                        <svg width="17" height="20" viewBox="0 0 17 20" fill="none"
-                                            xmlns="http://www.w3.org/2000/svg">
+                        <div class="flex justify-center mt-4 lg:mt-6">
+                            <button id="google-signin-btn" class="extra-login-btn w-full">
+                                <span>
+                                    <svg width="21" height="20" viewBox="0 0 21 20" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <g clip-path="url(#clip0_260_28785)">
                                             <path
-                                                d="M12.4775 0.0100088C12.435 -0.0374912 10.9038 0.0287588 9.57128 1.47501C8.23878 2.92001 8.44378 4.57751 8.47378 4.62001C8.50378 4.66251 10.3738 4.72876 11.5675 3.04751C12.7613 1.36626 12.52 0.0587588 12.4775 0.0100088ZM16.62 14.6763C16.56 14.5563 13.7138 13.1338 13.9788 10.3988C14.2438 7.66376 16.0725 6.91251 16.1013 6.83126C16.13 6.75001 15.355 5.84376 14.5338 5.38501C13.9307 5.06189 13.2634 4.8766 12.58 4.84251C12.445 4.83876 11.9763 4.72376 11.0125 4.98751C10.3775 5.16126 8.94628 5.72376 8.55253 5.74626C8.15753 5.76876 6.98253 5.09376 5.71878 4.91501C4.91003 4.75876 4.05253 5.07876 3.43878 5.32501C2.82628 5.57001 1.66128 6.26751 0.846279 8.12126C0.0312793 9.97376 0.457529 12.9088 0.762529 13.8213C1.06753 14.7338 1.54378 16.2263 2.35378 17.3163C3.07378 18.5463 4.02878 19.4 4.42753 19.69C4.82628 19.98 5.95128 20.1725 6.73128 19.7738C7.35878 19.3888 8.49128 19.1675 8.93878 19.1838C9.38503 19.2 10.265 19.3763 11.1663 19.8575C11.88 20.1038 12.555 20.0013 13.2313 19.7263C13.9075 19.45 14.8863 18.4025 16.0288 16.2788C16.4621 15.2913 16.6592 14.7571 16.62 14.6763Z"
-                                                fill="#111827" />
+                                                d="M20.305 10.2303C20.305 9.55056 20.2499 8.86711 20.1323 8.19836H10.7V12.0492H16.1015C15.8773 13.2911 15.1571 14.3898 14.1026 15.0879V17.5866H17.325C19.2174 15.8449 20.305 13.2728 20.305 10.2303Z"
+                                                fill="#4285F4" />
                                             <path
-                                                d="M12.4775 0.0100088C12.435 -0.0374912 10.9038 0.0287588 9.57128 1.47501C8.23878 2.92001 8.44378 4.57751 8.47378 4.62001C8.50378 4.66251 10.3738 4.72876 11.5675 3.04751C12.7613 1.36626 12.52 0.0587588 12.4775 0.0100088ZM16.62 14.6763C16.56 14.5563 13.7138 13.1338 13.9788 10.3988C14.2438 7.66376 16.0725 6.91251 16.1013 6.83126C16.13 6.75001 15.355 5.84376 14.5338 5.38501C13.9307 5.06189 13.2634 4.8766 12.58 4.84251C12.445 4.83876 11.9763 4.72376 11.0125 4.98751C10.3775 5.16126 8.94628 5.72376 8.55253 5.74626C8.15753 5.76876 6.98253 5.09376 5.71878 4.91501C4.91003 4.75876 4.05253 5.07876 3.43878 5.32501C2.82628 5.57001 1.66128 6.26751 0.846279 8.12126C0.0312793 9.97376 0.457529 12.9088 0.762529 13.8213C1.06753 14.7338 1.54378 16.2263 2.35378 17.3163C3.07378 18.5463 4.02878 19.4 4.42753 19.69C4.82628 19.98 5.95128 20.1725 6.73128 19.7738C7.35878 19.3888 8.49128 19.1675 8.93878 19.1838C9.38503 19.2 10.265 19.3763 11.1663 19.8575C11.88 20.1038 12.555 20.0013 13.2313 19.7263C13.9075 19.45 14.8863 18.4025 16.0288 16.2788C16.4621 15.2913 16.6592 14.7571 16.62 14.6763Z"
-                                                fill="#111827" />
-                                        </svg>
-
-                                    </span>
-                                    <span class="hidden lg:block">Sign in with Apple</span>
-                                    <span class="max-lg:block lg:hidden">Apple</span>
-                                </button>
-                            </div>
+                                                d="M10.7 20.0007C13.397 20.0007 15.6715 19.1152 17.3287 17.5866L14.1062 15.088C13.2096 15.6979 12.0522 16.0433 10.7037 16.0433C8.0948 16.0433 5.88279 14.2833 5.08911 11.9169H1.76373V14.4927C3.46133 17.8695 6.91898 20.0007 10.7 20.0007Z"
+                                                fill="#34A853" />
+                                            <path
+                                                d="M5.08546 11.9169C4.66657 10.6749 4.66657 9.33008 5.08546 8.08811V5.51233H1.76376C0.345428 8.33798 0.345428 11.667 1.76376 14.4927L5.08546 11.9169Z"
+                                                fill="#FBBC04" />
+                                            <path
+                                                d="M10.7 3.95805C12.1257 3.936 13.5036 4.47247 14.5361 5.45722L17.3911 2.60218C15.5833 0.904588 13.1839 -0.0287217 10.7 0.000673889C6.91898 0.000673889 3.46133 2.13185 1.76373 5.51234L5.08543 8.08813C5.87543 5.71811 8.09112 3.95805 10.7 3.95805Z"
+                                                fill="#EA4335" />
+                                        </g>
+                                        <defs>
+                                            <clipPath id="clip0_260_28785">
+                                                <rect width="20" height="20" fill="white"
+                                                    transform="translate(0.5)" />
+                                            </clipPath>
+                                        </defs>
+                                    </svg>
+                                </span>
+                                <span>Sign in with Google</span>
+                            </button>
                         </div>
                     </div>
                     <div>
@@ -182,6 +162,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script>
+        // Initialize Swiper
         var swiper = new Swiper(".loginart", {
             slidesPerView: 1,
             spaceBetween: 30,
@@ -200,18 +181,198 @@
             },
         });
 
-        // Handle form submission and redirect to dashboard
-        document.querySelector('form').addEventListener('submit', function(e) {
+        // Privy configuration
+        const PRIVY_APP_ID = 'cmhow02lw00b3l10cz7f0gbpu';
+        const API_URL = 'http://localhost:3000';
+
+        // Initialize Privy client
+        let privyClient;
+        let pendingEmail = null;
+
+        // Check for OAuth callback
+        const urlParams = new URLSearchParams(window.location.search);
+        const oauthCode = urlParams.get('code');
+        const oauthState = urlParams.get('state');
+
+        if (window.PrivyCore && window.PrivyCore.PrivyClient) {
+            privyClient = new window.PrivyCore.PrivyClient({
+                appId: PRIVY_APP_ID,
+            });
+
+            // If we have OAuth params, handle the callback
+            if (oauthCode && oauthState) {
+                handleOAuthCallback();
+            }
+        } else {
+            console.error('Privy SDK not loaded');
+        }
+
+        // Email Authentication - Step 1: Send code
+        async function sendEmailCode(email) {
+            try {
+                if (!privyClient) throw new Error('Privy not initialized');
+
+                await privyClient.auth.email.sendCode({ email });
+                pendingEmail = email;
+                console.log('Verification code sent to:', email);
+                return true;
+            } catch (error) {
+                console.error('Failed to send email code:', error);
+                throw error;
+            }
+        }
+
+        // Email Authentication - Step 2: Verify code and login
+        async function loginWithEmailCode(code) {
+            try {
+                if (!privyClient || !pendingEmail) throw new Error('No pending email auth');
+
+                const authResult = await privyClient.auth.email.loginWithCode({
+                    email: pendingEmail,
+                    code: code,
+                });
+
+                // Authenticate with backend
+                await authenticateWithBackend(authResult.token, {
+                    email: pendingEmail,
+                    provider: 'email'
+                });
+
+                pendingEmail = null;
+            } catch (error) {
+                console.error('Email verification failed:', error);
+                alert('Invalid verification code. Please try again.');
+                throw error;
+            }
+        }
+
+        // Google OAuth Authentication
+        async function loginWithGoogle() {
+            try {
+                if (!privyClient) throw new Error('Privy not initialized');
+
+                const result = await privyClient.auth.oauth.generateURL({
+                    provider: 'google',
+                });
+
+                // Store state for verification
+                localStorage.setItem('privy_oauth_state', result.state);
+                localStorage.setItem('privy_oauth_provider', 'google');
+
+                // Redirect to Google OAuth
+                window.location.href = result.url;
+            } catch (error) {
+                console.error('Google OAuth failed:', error);
+                alert('Failed to initiate Google sign-in. Please try again.');
+            }
+        }
+
+        // Handle OAuth callback
+        async function handleOAuthCallback() {
+            try {
+                const storedState = localStorage.getItem('privy_oauth_state');
+                const provider = localStorage.getItem('privy_oauth_provider');
+
+                if (oauthState !== storedState) {
+                    throw new Error('Invalid OAuth state');
+                }
+
+                const authResult = await privyClient.auth.oauth.loginWithCode({
+                    code: oauthCode,
+                    state: oauthState,
+                });
+
+                // Authenticate with backend
+                await authenticateWithBackend(authResult.token, {
+                    provider: provider
+                });
+
+                // Clean up
+                localStorage.removeItem('privy_oauth_state');
+                localStorage.removeItem('privy_oauth_provider');
+            } catch (error) {
+                console.error('OAuth callback error:', error);
+                alert('Authentication failed. Please try again.');
+                window.location.href = '/index.html';
+            }
+        }
+
+        // Authenticate with backend
+        async function authenticateWithBackend(privyToken, additionalData) {
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${privyToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(additionalData)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Authentication failed');
+                }
+
+                const data = await response.json();
+
+                // Save session
+                localStorage.setItem('sendana_user', JSON.stringify(data.user));
+                localStorage.setItem('sendana_token', privyToken);
+
+                // Redirect to dashboard
+                window.location.href = '/dashboard.html';
+            } catch (error) {
+                console.error('Backend authentication error:', error);
+                throw error;
+            }
+        }
+
+        // Handle email form submission
+        document.querySelector('form').addEventListener('submit', async function(e) {
             e.preventDefault();
-            window.location.href = 'dashboard.html';
+
+            const emailInput = document.getElementById('email');
+            const email = emailInput.value.trim();
+
+            if (!email) {
+                alert('Please enter your email address');
+                return;
+            }
+
+            // Validate email format
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+
+            try {
+                // Send verification code
+                await sendEmailCode(email);
+
+                // Ask for verification code
+                const code = prompt('A verification code has been sent to your email. Please enter it below:');
+
+                if (!code) {
+                    alert('Verification cancelled');
+                    return;
+                }
+
+                // Verify code and login
+                await loginWithEmailCode(code);
+            } catch (error) {
+                console.error('Email authentication error:', error);
+            }
         });
 
-        // Handle Google and Apple sign in buttons
-        document.querySelectorAll('.extra-login-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                window.location.href = 'dashboard.html';
+        // Handle Google sign in button
+        const googleBtn = document.getElementById('google-signin-btn');
+        if (googleBtn) {
+            googleBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                loginWithGoogle();
             });
-        });
+        }
     </script>
 </body>
 
