@@ -7,7 +7,7 @@ ini_set('display_errors', 1);
 date_default_timezone_set('UTC');
 
 // Simple router
-$requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH');
+$requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $requestMethod = $_SERVER['REQUEST_METHOD'];
 
 // Handle CORS

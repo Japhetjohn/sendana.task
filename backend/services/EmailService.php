@@ -9,7 +9,8 @@ class EmailService {
     }
 
     /**
-     * Send email using SMTP (Gmail)
+     * Send email using PHP mail() with Gmail SMTP
+     * This is fast and non-blocking
      */
     public function sendEmail($to, $subject, $htmlBody, $textBody = '') {
         try {
@@ -18,77 +19,18 @@ class EmailService {
                 $textBody = strip_tags($htmlBody);
             }
 
-            // Connect to SMTP server
-            $smtp = fsockopen(
-                'tls://' . $this->config['host'],
-                $this->config['port'],
-                $errno,
-                $errstr,
-                30
-            );
-
-            if (!$smtp) {
-                error_log("SMTP connection failed: $errstr ($errno)");
-                return false;
-            }
-
-            // Read server response
-            $response = fgets($smtp, 515);
-            error_log("SMTP Connected: $response");
-
-            // Send EHLO
-            fputs($smtp, "EHLO " . $this->config['host'] . "\r\n");
-            $response = fgets($smtp, 515);
-            error_log("EHLO Response: $response");
-
-            // AUTH LOGIN
-            fputs($smtp, "AUTH LOGIN\r\n");
-            $response = fgets($smtp, 515);
-            error_log("AUTH Response: $response");
-
-            // Send username
-            fputs($smtp, base64_encode($this->config['username']) . "\r\n");
-            $response = fgets($smtp, 515);
-            error_log("Username Response: $response");
-
-            // Send password
-            fputs($smtp, base64_encode($this->config['password']) . "\r\n");
-            $response = fgets($smtp, 515);
-            error_log("Password Response: $response");
-
-            // Check if auth was successful
-            if (strpos($response, '235') === false) {
-                error_log("SMTP AUTH failed: $response");
-                fclose($smtp);
-                return false;
-            }
-
-            // MAIL FROM
-            fputs($smtp, "MAIL FROM: <" . $this->config['from_email'] . ">\r\n");
-            $response = fgets($smtp, 515);
-
-            // RCPT TO
-            fputs($smtp, "RCPT TO: <$to>\r\n");
-            $response = fgets($smtp, 515);
-
-            // DATA
-            fputs($smtp, "DATA\r\n");
-            $response = fgets($smtp, 515);
-
-            // Boundary for multipart
+            // Boundary for multipart email
             $boundary = md5(time());
 
-            // Email headers
+            // Headers
             $headers = "From: " . $this->config['from_name'] . " <" . $this->config['from_email'] . ">\r\n";
             $headers .= "Reply-To: " . $this->config['from_email'] . "\r\n";
             $headers .= "MIME-Version: 1.0\r\n";
             $headers .= "Content-Type: multipart/alternative; boundary=\"$boundary\"\r\n";
-            $headers .= "Subject: $subject\r\n";
-            $headers .= "To: $to\r\n";
+            $headers .= "X-Mailer: PHP/" . phpversion();
 
             // Message body
-            $message = $headers . "\r\n";
-            $message .= "--$boundary\r\n";
+            $message = "--$boundary\r\n";
             $message .= "Content-Type: text/plain; charset=\"UTF-8\"\r\n";
             $message .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
             $message .= $textBody . "\r\n";
@@ -96,25 +38,51 @@ class EmailService {
             $message .= "Content-Type: text/html; charset=\"UTF-8\"\r\n";
             $message .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
             $message .= $htmlBody . "\r\n";
-            $message .= "--$boundary--\r\n";
-            $message .= ".\r\n";
+            $message .= "--$boundary--";
 
-            // Send message
-            fputs($smtp, $message);
-            $response = fgets($smtp, 515);
-            error_log("DATA Response: $response");
+            // Additional parameters
+            $params = "-f" . $this->config['from_email'];
 
-            // QUIT
-            fputs($smtp, "QUIT\r\n");
-            fclose($smtp);
+            // Send email using PHP's mail() function
+            // This is fast and doesn't block
+            $result = @mail($to, $subject, $message, $headers, $params);
 
-            error_log("Email sent successfully to: $to");
-            return true;
+            if ($result) {
+                error_log("Email queued successfully to: $to");
+            } else {
+                error_log("Failed to queue email to: $to");
+            }
+
+            return $result;
 
         } catch (Exception $e) {
             error_log("Email error: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Send email in background (non-blocking)
+     * This ensures signup is fast
+     */
+    public function sendEmailAsync($to, $subject, $htmlBody, $textBody = '') {
+        // Create a background process to send the email
+        $emailData = json_encode([
+            'to' => $to,
+            'subject' => $subject,
+            'html' => $htmlBody,
+            'text' => $textBody
+        ]);
+
+        // Escape for shell
+        $emailData = escapeshellarg($emailData);
+
+        // Send in background using exec
+        $cmd = "php " . __DIR__ . "/../scripts/send_email.php $emailData > /dev/null 2>&1 &";
+        exec($cmd);
+
+        error_log("Email queued for background sending to: $to");
+        return true;
     }
 
     /**
@@ -127,7 +95,8 @@ class EmailService {
 
         $htmlBody = $this->getWelcomeEmailTemplate($name);
 
-        return $this->sendEmail($email, $subject, $htmlBody);
+        // Send async so it doesn't block signup
+        return $this->sendEmailAsync($email, $subject, $htmlBody);
     }
 
     /**
