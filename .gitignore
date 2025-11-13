@@ -5,3 +5,5 @@ __MACOSX/
 ._*
 .DS_Store
 *.log
+vendor/
+.vite
