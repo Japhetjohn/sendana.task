@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
+require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/privy.php';
 require_once __DIR__ . '/../models/User.php';
@@ -111,7 +112,9 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
             sendResponse(['error' => 'Failed to create user'], 500);
         }
 
-        // Send welcome email (async - don't wait for it)
+        // Send welcome email (temporarily disabled for debugging)
+        // TODO: Fix async email sending
+        /*
         try {
             // Extract first name from email (before @) or use default
             $firstName = explode('@', $email)[0];
@@ -121,6 +124,8 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
             // Log error but don't fail signup
             error_log("Failed to send welcome email: " . $e->getMessage());
         }
+        */
+        error_log("Signup successful for: $email (email sending temp disabled)");
 
         // Generate token
         $token = generateToken($user->privyId);

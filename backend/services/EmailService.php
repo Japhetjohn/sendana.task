@@ -1,69 +1,84 @@
 <?php
-require_once __DIR__ . '/../config/email.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
 
 class EmailService {
     private $config;
 
     public function __construct() {
-        $this->config = EmailConfig::getConfig();
+        $this->loadEnv();
     }
 
     /**
-     * Send email using PHP mail() with Gmail SMTP
-     * This is fast and non-blocking
+     * Load environment variables from .env file
+     */
+    private function loadEnv() {
+        $envFile = __DIR__ . '/../.env';
+        if (file_exists($envFile)) {
+            $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach ($lines as $line) {
+                if (strpos(trim($line), '#') === 0) continue;
+                list($key, $value) = explode('=', $line, 2);
+                $_ENV[trim($key)] = trim($value);
+            }
+        }
+
+        $this->config = [
+            'user' => $_ENV['EMAIL_USER'] ?? '',
+            'password' => $_ENV['EMAIL_PASSWORD'] ?? '',
+            'from' => $_ENV['EMAIL_FROM'] ?? 'Sendana Team <noreply@sendana.com>'
+        ];
+    }
+
+    /**
+     * Send email using PHPMailer (reliable and fast)
      */
     public function sendEmail($to, $subject, $htmlBody, $textBody = '') {
+        $mail = new PHPMailer(true);
+
         try {
-            // If no text body provided, strip HTML from html body
-            if (empty($textBody)) {
-                $textBody = strip_tags($htmlBody);
-            }
+            // Server settings
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com';
+            $mail->SMTPAuth = true;
+            $mail->Username = $this->config['user'];
+            $mail->Password = $this->config['password'];
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port = 587;
 
-            // Boundary for multipart email
-            $boundary = md5(time());
+            // Disable certificate verification for faster sending
+            $mail->SMTPOptions = array(
+                'ssl' => array(
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                    'allow_self_signed' => true
+                )
+            );
 
-            // Headers
-            $headers = "From: " . $this->config['from_name'] . " <" . $this->config['from_email'] . ">\r\n";
-            $headers .= "Reply-To: " . $this->config['from_email'] . "\r\n";
-            $headers .= "MIME-Version: 1.0\r\n";
-            $headers .= "Content-Type: multipart/alternative; boundary=\"$boundary\"\r\n";
-            $headers .= "X-Mailer: PHP/" . phpversion();
+            // Recipients
+            $mail->setFrom($this->config['user'], 'Sendana Team');
+            $mail->addAddress($to);
 
-            // Message body
-            $message = "--$boundary\r\n";
-            $message .= "Content-Type: text/plain; charset=\"UTF-8\"\r\n";
-            $message .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-            $message .= $textBody . "\r\n";
-            $message .= "--$boundary\r\n";
-            $message .= "Content-Type: text/html; charset=\"UTF-8\"\r\n";
-            $message .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-            $message .= $htmlBody . "\r\n";
-            $message .= "--$boundary--";
+            // Content
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body = $htmlBody;
+            $mail->AltBody = $textBody ?: strip_tags($htmlBody);
 
-            // Additional parameters
-            $params = "-f" . $this->config['from_email'];
-
-            // Send email using PHP's mail() function
-            // This is fast and doesn't block
-            $result = @mail($to, $subject, $message, $headers, $params);
-
-            if ($result) {
-                error_log("Email queued successfully to: $to");
-            } else {
-                error_log("Failed to queue email to: $to");
-            }
-
-            return $result;
+            $mail->send();
+            error_log("Email sent successfully to: $to");
+            return true;
 
         } catch (Exception $e) {
-            error_log("Email error: " . $e->getMessage());
+            error_log("Email failed to send: {$mail->ErrorInfo}");
             return false;
         }
     }
 
     /**
      * Send email in background (non-blocking)
-     * This ensures signup is fast
      */
     public function sendEmailAsync($to, $subject, $htmlBody, $textBody = '') {
         // Create a background process to send the email
@@ -74,11 +89,8 @@ class EmailService {
             'text' => $textBody
         ]);
 
-        // Escape for shell
         $emailData = escapeshellarg($emailData);
-
-        // Send in background using exec
-        $cmd = "php " . __DIR__ . "/../scripts/send_email.php $emailData > /dev/null 2>&1 &";
+        $cmd = "php " . __DIR__ . "/../scripts/send_email_async.php $emailData > /dev/null 2>&1 &";
         exec($cmd);
 
         error_log("Email queued for background sending to: $to");
@@ -90,13 +102,42 @@ class EmailService {
      */
     public function sendWelcomeEmail($email, $firstName = null) {
         $name = $firstName ? $firstName : 'there';
-
-        $subject = "You're in! Let's make money move 🚀";
-
+        $subject = "You're in! Let's make money move";
         $htmlBody = $this->getWelcomeEmailTemplate($name);
 
-        // Send async so it doesn't block signup
-        return $this->sendEmailAsync($email, $subject, $htmlBody);
+        // Log the email we're about to send
+        error_log("Queuing welcome email to: $email (Name: $name)");
+
+        // Create data file for background process
+        $emailData = [
+            'to' => $email,
+            'subject' => $subject,
+            'html' => $htmlBody,
+            'text' => strip_tags($htmlBody),
+            'name' => $name
+        ];
+
+        $tmpFile = '/tmp/sendana_email_' . md5($email . time()) . '.json';
+        file_put_contents($tmpFile, json_encode($emailData));
+
+        $scriptPath = __DIR__ . "/../scripts/send_email_async.php";
+
+        // Fire and forget - truly non-blocking
+        $cmd = sprintf(
+            'php %s %s > /dev/null 2>&1 & echo $!',
+            escapeshellarg($scriptPath),
+            escapeshellarg($tmpFile)
+        );
+
+        // Use pclose/popen for true non-blocking execution
+        if (function_exists('pclose') && function_exists('popen')) {
+            pclose(popen($cmd, 'r'));
+        } else {
+            exec($cmd . ' &');
+        }
+
+        error_log("Email queued for: $email");
+        return true;
     }
 
     /**
