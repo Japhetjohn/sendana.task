@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+__MACOSX/
+._*
+.DS_Store
+*.log
