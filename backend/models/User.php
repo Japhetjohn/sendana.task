@@ -1,12 +1,34 @@
 <?php
-require_once __DIR__ . '/../config/database.php';
+// Try to use MongoDB if available, otherwise use JSON database
+try {
+    if (class_exists('MongoDB\Driver\Manager')) {
+        require_once __DIR__ . '/../config/database.php';
+        $useJsonDb = false;
+    } else {
+        throw new Exception('MongoDB not available');
+    }
+} catch (Exception $e) {
+    require_once __DIR__ . '/../config/json_database.php';
+    $useJsonDb = true;
+}
 
 class User {
     private $db;
     private $collection = 'users';
+    private $useJsonDb;
 
     public function __construct() {
-        $this->db = new Database();
+        try {
+            if (class_exists('MongoDB\Driver\Manager')) {
+                $this->db = new Database();
+                $this->useJsonDb = false;
+            } else {
+                throw new Exception('MongoDB not available');
+            }
+        } catch (Exception $e) {
+            $this->db = new JsonDatabase();
+            $this->useJsonDb = true;
+        }
     }
 
     // Find user by Privy ID
@@ -38,9 +60,16 @@ class User {
                 'GBP' => 0
             ],
             'transactions' => [],
-            'createdAt' => new MongoDB\BSON\UTCDateTime(),
-            'updatedAt' => new MongoDB\BSON\UTCDateTime()
         ];
+
+        // Handle createdAt and updatedAt based on database type
+        if ($this->useJsonDb) {
+            $document['createdAt'] = time();
+            $document['updatedAt'] = time();
+        } else {
+            $document['createdAt'] = new MongoDB\BSON\UTCDateTime();
+            $document['updatedAt'] = new MongoDB\BSON\UTCDateTime();
+        }
 
         // Add password hash if provided
         if (isset($data['passwordHash'])) {
@@ -76,33 +105,68 @@ class User {
             $updateData['stellarSecretKey'] = $data['stellarSecretKey'];
         }
 
-        $updateData['updatedAt'] = new MongoDB\BSON\UTCDateTime();
+        if ($this->useJsonDb) {
+            $updateData['updatedAt'] = time();
+        } else {
+            $updateData['updatedAt'] = new MongoDB\BSON\UTCDateTime();
+        }
 
         $this->db->updateOne($this->collection, ['privyId' => $privyId], $updateData);
 
         return $this->findByPrivyId($privyId);
     }
 
-    // Convert MongoDB object to array for JSON response
+    // Convert database object to array for JSON response
     public function toArray($user) {
         if (!$user) return null;
 
-        return [
-            'id' => (string) $user->_id,
-            'privyId' => $user->privyId,
-            'email' => $user->email,
-            'authProvider' => $user->authProvider ?? 'email',
+        // Handle both object and array (from JSON database)
+        $user = is_object($user) ? (array) $user : $user;
+
+        $result = [
+            'id' => $user['_id'] ?? uniqid(),
+            'privyId' => $user['privyId'] ?? null,
+            'email' => $user['email'] ?? null,
+            'authProvider' => $user['authProvider'] ?? 'email',
             'profile' => [
-                'name' => $user->profile->name ?? null,
-                'profilePicture' => $user->profile->profilePicture ?? null
+                'name' => null,
+                'profilePicture' => null
             ],
             'balance' => [
-                'USD' => $user->balance->USD ?? 0,
-                'EUR' => $user->balance->EUR ?? 0,
-                'GBP' => $user->balance->GBP ?? 0
+                'USD' => 0,
+                'EUR' => 0,
+                'GBP' => 0
             ],
-            'stellarPublicKey' => $user->stellarPublicKey ?? null,
-            'createdAt' => isset($user->createdAt) ? $user->createdAt->toDateTime()->format('c') : null
+            'stellarPublicKey' => $user['stellarPublicKey'] ?? null,
+            'createdAt' => null
         ];
+
+        // Handle nested profile
+        if (isset($user['profile'])) {
+            $profile = is_object($user['profile']) ? (array) $user['profile'] : $user['profile'];
+            $result['profile']['name'] = $profile['name'] ?? null;
+            $result['profile']['profilePicture'] = $profile['profilePicture'] ?? null;
+        }
+
+        // Handle nested balance
+        if (isset($user['balance'])) {
+            $balance = is_object($user['balance']) ? (array) $user['balance'] : $user['balance'];
+            $result['balance']['USD'] = $balance['USD'] ?? 0;
+            $result['balance']['EUR'] = $balance['EUR'] ?? 0;
+            $result['balance']['GBP'] = $balance['GBP'] ?? 0;
+        }
+
+        // Handle createdAt
+        if (isset($user['createdAt'])) {
+            if (is_numeric($user['createdAt'])) {
+                // JSON database timestamp
+                $result['createdAt'] = date('c', $user['createdAt']);
+            } elseif (is_object($user['createdAt']) && method_exists($user['createdAt'], 'toDateTime')) {
+                // MongoDB date
+                $result['createdAt'] = $user['createdAt']->toDateTime()->format('c');
+            }
+        }
+
+        return $result;
     }
 }
