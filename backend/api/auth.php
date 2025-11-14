@@ -115,20 +115,14 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
         // Generate token
         $token = generateToken($user->privyId);
 
-        // Send welcome email after response (using shutdown function)
-        $userEmail = $email;
-        register_shutdown_function(function() use ($emailService, $userEmail) {
-            try {
-                $firstName = explode('@', $userEmail)[0];
-                $firstName = ucfirst($firstName);
-                $subject = "You're in! Let's make money move";
-                $htmlBody = $emailService->getWelcomeEmailTemplate($firstName);
-                $emailService->sendEmail($userEmail, $subject, $htmlBody);
-                error_log("✅ Welcome email sent to: $userEmail");
-            } catch (Exception $e) {
-                error_log("❌ Failed to send welcome email: " . $e->getMessage());
-            }
-        });
+        // Send welcome email (async with delay is acceptable)
+        try {
+            $firstName = explode('@', $email)[0];
+            $firstName = ucfirst($firstName);
+            $emailService->sendWelcomeEmail($email, $firstName);
+        } catch (Exception $e) {
+            error_log("Failed to queue welcome email: " . $e->getMessage());
+        }
 
         sendResponse([
             'success' => true,
@@ -311,21 +305,14 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
                 sendResponse(['error' => 'Failed to create user'], 500);
             }
 
-            // Send welcome email after response (using shutdown function)
-            $userEmail = $email;
-            $userName = $name;
-            register_shutdown_function(function() use ($emailService, $userEmail, $userName) {
-                try {
-                    $firstName = $userName ? explode(' ', $userName)[0] : explode('@', $userEmail)[0];
-                    $firstName = ucfirst($firstName);
-                    $subject = "You're in! Let's make money move";
-                    $htmlBody = $emailService->getWelcomeEmailTemplate($firstName);
-                    $emailService->sendEmail($userEmail, $subject, $htmlBody);
-                    error_log("✅ Welcome email sent to: $userEmail");
-                } catch (Exception $e) {
-                    error_log("❌ Failed to send welcome email: " . $e->getMessage());
-                }
-            });
+            // Send welcome email (async with delay is acceptable)
+            try {
+                $firstName = $name ? explode(' ', $name)[0] : explode('@', $email)[0];
+                $firstName = ucfirst($firstName);
+                $emailService->sendWelcomeEmail($email, $firstName);
+            } catch (Exception $e) {
+                error_log("Failed to queue welcome email: " . $e->getMessage());
+            }
         }
 
         // Generate token
