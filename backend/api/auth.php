@@ -4,7 +4,6 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Handle preflight requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
@@ -17,17 +16,14 @@ require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../services/EmailService.php';
 require_once __DIR__ . '/../services/StellarService.php';
 
-// Get request method and path
 $method = $_SERVER['REQUEST_METHOD'];
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-// Initialize services
 $userModel = new User();
 $privyAuth = new PrivyAuth();
 $emailService = new EmailService();
-$stellarService = new StellarService(true); // true = testnet
+$stellarService = new StellarService(true);
 
-// Helper function to get authorization token
 function getAuthToken() {
     $headers = getallheaders();
     if (isset($headers['Authorization'])) {
@@ -39,14 +35,12 @@ function getAuthToken() {
     return null;
 }
 
-// Helper function to send JSON response
 function sendResponse($data, $statusCode = 200) {
     http_response_code($statusCode);
     echo json_encode($data);
     exit();
 }
 
-// Helper function to generate token
 function generateToken($userId) {
     return base64_encode(json_encode([
         'userId' => $userId,
@@ -55,14 +49,12 @@ function generateToken($userId) {
     ]));
 }
 
-// Helper function to verify token
 function verifyToken($token) {
     try {
         $decoded = json_decode(base64_decode($token), true);
         if (!$decoded || !isset($decoded['userId'])) {
             return null;
         }
-        // Token expires after 24 hours
         if (time() - $decoded['timestamp'] > 86400) {
             return null;
         }
@@ -72,7 +64,6 @@ function verifyToken($token) {
     }
 }
 
-// POST /signup - Register new user
 if ($method === 'POST' && strpos($path, '/signup') !== false) {
     try {
         $input = json_decode(file_get_contents('php://input'), true);
@@ -91,16 +82,13 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
             sendResponse(['error' => 'Password must be at least 8 characters'], 400);
         }
 
-        // Check if user already exists
         $existingUser = $userModel->findByEmail($email);
         if ($existingUser) {
             sendResponse(['error' => 'Email already registered'], 409);
         }
 
-        // Hash password
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-        // Create Stellar wallet
         $stellarWallet = $stellarService->createAndFundTestnetWallet();
 
         if (!$stellarWallet['success']) {
@@ -108,7 +96,6 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
             sendResponse(['error' => 'Failed to create wallet'], 500);
         }
 
-        // Create user
         $userData = [
             'privyId' => 'user_' . bin2hex(random_bytes(16)),
             'email' => $email,
@@ -126,10 +113,8 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
 
         error_log("Stellar wallet created and funded for user: " . $stellarWallet['publicKey']);
 
-        // Generate token
         $token = generateToken($user->privyId);
 
-        // Send welcome email (async with delay is acceptable)
         try {
             $firstName = explode('@', $email)[0];
             $firstName = ucfirst($firstName);
@@ -151,7 +136,6 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
     }
 }
 
-// POST /login - Handle user login
 elseif ($method === 'POST' && strpos($path, '/login') !== false) {
     try {
         $input = json_decode(file_get_contents('php://input'), true);
@@ -165,19 +149,16 @@ elseif ($method === 'POST' && strpos($path, '/login') !== false) {
             sendResponse(['error' => 'Invalid email format'], 400);
         }
 
-        // Find user by email
         $user = $userModel->findByEmail($email);
 
         if (!$user) {
             sendResponse(['error' => 'Invalid email or password'], 401);
         }
 
-        // Verify password
         if (!isset($user->passwordHash) || !password_verify($input['password'], $user->passwordHash)) {
             sendResponse(['error' => 'Invalid email or password'], 401);
         }
 
-        // Generate token
         $token = generateToken($user->privyId);
 
         sendResponse([
@@ -193,7 +174,6 @@ elseif ($method === 'POST' && strpos($path, '/login') !== false) {
     }
 }
 
-// GET /user - Get current user data
 elseif ($method === 'GET' && strpos($path, '/user') !== false) {
     try {
         $token = getAuthToken();
@@ -223,7 +203,6 @@ elseif ($method === 'GET' && strpos($path, '/user') !== false) {
     }
 }
 
-// PUT /user - Update user profile
 elseif ($method === 'PUT' && strpos($path, '/user') !== false) {
     try {
         $token = getAuthToken();
@@ -264,7 +243,6 @@ elseif ($method === 'PUT' && strpos($path, '/user') !== false) {
     }
 }
 
-// POST /auth/google - Handle Google OAuth
 elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
     try {
         $input = json_decode(file_get_contents('php://input'), true);
@@ -357,7 +335,6 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
     }
 }
 
-// GET /wallet - Get user's wallet information
 elseif ($method === 'GET' && strpos($path, '/wallet') !== false) {
     try {
         $token = getAuthToken();
@@ -393,14 +370,12 @@ elseif ($method === 'GET' && strpos($path, '/wallet') !== false) {
     }
 }
 
-// GET /auth/privy-config - Get Privy app ID for frontend
 elseif ($method === 'GET' && strpos($path, '/auth/privy-config') !== false) {
     sendResponse([
         'appId' => $privyAuth->getAppId()
     ]);
 }
 
-// Route not found
 else {
     sendResponse(['error' => 'Route not found'], 404);
 }

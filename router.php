@@ -1,20 +1,16 @@
 <?php
-// Router for PHP Built-in Server
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-// Redirect root to login page
 if ($uri === '/') {
     header('Location: /frontend/pages/index.html');
     exit();
 }
 
-// Serve static files
 if (file_exists(__DIR__ . $uri)) {
-    return false; // Let PHP serve the static file
+    return false;
 }
 
-// Route API requests (both /backend/api and /api for convenience)
 if (strpos($uri, '/backend/api/auth') !== false || strpos($uri, '/api/auth') !== false ||
     strpos($uri, '/backend/api/wallet') !== false || strpos($uri, '/api/wallet') !== false) {
     require __DIR__ . '/backend/api/auth.php';
@@ -36,5 +32,4 @@ if (strpos($uri, '/backend') !== false) {
     exit();
 }
 
-// Default: return false to let PHP serve the file
 return false;

@@ -96,11 +96,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Check if wallet elements exist
   if (!walletAddressBtn || !walletModal) {
-    console.error("Wallet elements not found!");
     return;
   }
-
-  console.log("Wallet button found, setting up event listeners...");
 
   // Get auth token from localStorage
   function getAuthToken() {
@@ -143,15 +140,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Open wallet modal
   walletAddressBtn.addEventListener("click", function (e) {
-    console.log("Wallet button clicked!");
     e.preventDefault();
     e.stopPropagation();
     if (walletModal) {
       walletModal.style.display = "flex";
-      console.log("Modal display set to flex!");
       fetchWalletData();
-    } else {
-      console.error("walletModal is null!");
     }
   });
 

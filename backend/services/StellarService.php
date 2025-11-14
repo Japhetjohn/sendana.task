@@ -4,13 +4,8 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Soneso\StellarSDK\Crypto\KeyPair;
 
 class StellarService {
-    /**
-     * Create a new Stellar wallet (keypair)
-     * Returns array with publicKey and secretKey
-     */
     public function createWallet() {
         try {
-            // Generate a random keypair
             $keyPair = KeyPair::random();
 
             $publicKey = $keyPair->getAccountId();
@@ -33,9 +28,6 @@ class StellarService {
         }
     }
 
-    /**
-     * Alias for createWallet - for compatibility with auth code
-     */
     public function createAndFundTestnetWallet() {
         return $this->createWallet();
     }
