@@ -94,16 +94,24 @@ document.addEventListener("DOMContentLoaded", function () {
   const walletEmail = document.getElementById("walletEmail");
   const copySuccessMessage = document.getElementById("copySuccessMessage");
 
+  // Check if wallet elements exist
+  if (!walletAddressBtn || !walletModal) {
+    console.error("Wallet elements not found!");
+    return;
+  }
+
+  console.log("Wallet button found, setting up event listeners...");
+
   // Get auth token from localStorage
   function getAuthToken() {
-    return localStorage.getItem("authToken");
+    return localStorage.getItem("sendana_token");
   }
 
   // Fetch wallet data from API
   async function fetchWalletData() {
     const token = getAuthToken();
     if (!token) {
-      walletAddressText.textContent = "Error: Please log in";
+      if (walletAddressText) walletAddressText.textContent = "Error: Please log in";
       return;
     }
 
@@ -122,60 +130,75 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const data = await response.json();
       if (data.success && data.wallet) {
-        walletAddressText.textContent = data.wallet.address || "No address found";
-        walletEmail.textContent = data.wallet.email || "-";
+        if (walletAddressText) walletAddressText.textContent = data.wallet.address || "No address found";
+        if (walletEmail) walletEmail.textContent = data.wallet.email || "-";
       } else {
-        walletAddressText.textContent = "Error loading wallet";
+        if (walletAddressText) walletAddressText.textContent = "Error loading wallet";
       }
     } catch (error) {
       console.error("Error fetching wallet:", error);
-      walletAddressText.textContent = "Error loading wallet";
+      if (walletAddressText) walletAddressText.textContent = "Error loading wallet";
     }
   }
 
   // Open wallet modal
   walletAddressBtn.addEventListener("click", function (e) {
+    console.log("Wallet button clicked!");
     e.preventDefault();
-    walletModal.classList.remove("hidden");
-    fetchWalletData();
+    e.stopPropagation();
+    if (walletModal) {
+      walletModal.style.display = "flex";
+      console.log("Modal display set to flex!");
+      fetchWalletData();
+    } else {
+      console.error("walletModal is null!");
+    }
   });
 
   // Close wallet modal
-  closeWalletModal.addEventListener("click", function () {
-    walletModal.classList.add("hidden");
-    copySuccessMessage.classList.add("hidden");
-  });
+  if (closeWalletModal) {
+    closeWalletModal.addEventListener("click", function () {
+      if (walletModal) {
+        walletModal.style.display = "none";
+      }
+      if (copySuccessMessage) copySuccessMessage.classList.add("hidden");
+    });
+  }
 
   // Close modal when clicking outside
-  walletModal.addEventListener("click", function (e) {
-    if (e.target === walletModal) {
-      walletModal.classList.add("hidden");
-      copySuccessMessage.classList.add("hidden");
-    }
-  });
+  if (walletModal) {
+    walletModal.addEventListener("click", function (e) {
+      if (e.target === walletModal) {
+        walletModal.style.display = "none";
+        if (copySuccessMessage) copySuccessMessage.classList.add("hidden");
+      }
+    });
+  }
 
   // Copy wallet address to clipboard
-  copyWalletBtn.addEventListener("click", async function () {
-    const address = walletAddressText.textContent;
-    if (address && address !== "Loading..." && address !== "Error loading wallet") {
-      try {
-        await navigator.clipboard.writeText(address);
-        copySuccessMessage.classList.remove("hidden");
-        setTimeout(() => {
-          copySuccessMessage.classList.add("hidden");
-        }, 3000);
-      } catch (err) {
-        console.error("Failed to copy:", err);
-        alert("Failed to copy wallet address");
+  if (copyWalletBtn) {
+    copyWalletBtn.addEventListener("click", async function () {
+      const address = walletAddressText ? walletAddressText.textContent : "";
+      if (address && address !== "Loading..." && address !== "Error loading wallet") {
+        try {
+          await navigator.clipboard.writeText(address);
+          if (copySuccessMessage) copySuccessMessage.classList.remove("hidden");
+          setTimeout(() => {
+            if (copySuccessMessage) copySuccessMessage.classList.add("hidden");
+          }, 3000);
+        } catch (err) {
+          console.error("Failed to copy:", err);
+          alert("Failed to copy wallet address");
+        }
       }
-    }
-  });
+    });
+  }
 
   // Close modal on Escape key
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && !walletModal.classList.contains("hidden")) {
-      walletModal.classList.add("hidden");
-      copySuccessMessage.classList.add("hidden");
+    if (walletModal && e.key === "Escape" && walletModal.style.display === "flex") {
+      walletModal.style.display = "none";
+      if (copySuccessMessage) copySuccessMessage.classList.add("hidden");
     }
   });
 });
