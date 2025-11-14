@@ -112,19 +112,23 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
             sendResponse(['error' => 'Failed to create user'], 500);
         }
 
-        // Send welcome email (async - won't block signup)
-        try {
-            // Extract first name from email (before @) or use default
-            $firstName = explode('@', $email)[0];
-            $firstName = ucfirst($firstName);
-            $emailService->sendWelcomeEmail($email, $firstName);
-        } catch (Exception $e) {
-            // Log error but don't fail signup
-            error_log("Failed to send welcome email: " . $e->getMessage());
-        }
-
         // Generate token
         $token = generateToken($user->privyId);
+
+        // Send welcome email after response (using shutdown function)
+        $userEmail = $email;
+        register_shutdown_function(function() use ($emailService, $userEmail) {
+            try {
+                $firstName = explode('@', $userEmail)[0];
+                $firstName = ucfirst($firstName);
+                $subject = "You're in! Let's make money move";
+                $htmlBody = $emailService->getWelcomeEmailTemplate($firstName);
+                $emailService->sendEmail($userEmail, $subject, $htmlBody);
+                error_log("✅ Welcome email sent to: $userEmail");
+            } catch (Exception $e) {
+                error_log("❌ Failed to send welcome email: " . $e->getMessage());
+            }
+        });
 
         sendResponse([
             'success' => true,
@@ -307,16 +311,21 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
                 sendResponse(['error' => 'Failed to create user'], 500);
             }
 
-            // Send welcome email to new Google user
-            try {
-                // Use Google name if available, otherwise extract from email
-                $firstName = $name ? explode(' ', $name)[0] : explode('@', $email)[0];
-                $firstName = ucfirst($firstName);
-                $emailService->sendWelcomeEmail($email, $firstName);
-            } catch (Exception $e) {
-                // Log error but don't fail signup
-                error_log("Failed to send welcome email: " . $e->getMessage());
-            }
+            // Send welcome email after response (using shutdown function)
+            $userEmail = $email;
+            $userName = $name;
+            register_shutdown_function(function() use ($emailService, $userEmail, $userName) {
+                try {
+                    $firstName = $userName ? explode(' ', $userName)[0] : explode('@', $userEmail)[0];
+                    $firstName = ucfirst($firstName);
+                    $subject = "You're in! Let's make money move";
+                    $htmlBody = $emailService->getWelcomeEmailTemplate($firstName);
+                    $emailService->sendEmail($userEmail, $subject, $htmlBody);
+                    error_log("✅ Welcome email sent to: $userEmail");
+                } catch (Exception $e) {
+                    error_log("❌ Failed to send welcome email: " . $e->getMessage());
+                }
+            });
         }
 
         // Generate token

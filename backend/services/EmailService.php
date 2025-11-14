@@ -122,19 +122,15 @@ class EmailService {
 
         $scriptPath = __DIR__ . "/../scripts/send_email_async.php";
 
-        // Fire and forget - truly non-blocking
+        // Fire and forget - spawn background process
         $cmd = sprintf(
-            'php %s %s > /dev/null 2>&1 & echo $!',
+            'php %s %s > /dev/null 2>&1 &',
             escapeshellarg($scriptPath),
             escapeshellarg($tmpFile)
         );
 
-        // Use pclose/popen for true non-blocking execution
-        if (function_exists('pclose') && function_exists('popen')) {
-            pclose(popen($cmd, 'r'));
-        } else {
-            exec($cmd . ' &');
-        }
+        // Execute in background without waiting
+        exec($cmd);
 
         error_log("Email queued for: $email");
         return true;
@@ -143,7 +139,7 @@ class EmailService {
     /**
      * Get welcome email HTML template
      */
-    private function getWelcomeEmailTemplate($firstName) {
+    public function getWelcomeEmailTemplate($firstName) {
         return '
 <!DOCTYPE html>
 <html>

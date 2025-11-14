@@ -79,9 +79,19 @@ try {
 
     $mail->send();
     error_log("✅ Welcome email sent to: $to");
+
+    // Clean up temp file
+    if (file_exists($jsonFile)) {
+        unlink($jsonFile);
+    }
     exit(0);
 
 } catch (Exception $e) {
     error_log("❌ Email failed to $to: {$mail->ErrorInfo}");
+
+    // Clean up temp file even on failure
+    if (file_exists($jsonFile)) {
+        unlink($jsonFile);
+    }
     exit(1);
 }
