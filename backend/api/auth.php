@@ -15,6 +15,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/privy.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../services/EmailService.php';
+require_once __DIR__ . '/../services/StellarService.php';
 
 // Get request method and path
 $method = $_SERVER['REQUEST_METHOD'];
@@ -24,6 +25,7 @@ $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $userModel = new User();
 $privyAuth = new PrivyAuth();
 $emailService = new EmailService();
+$stellarService = new StellarService(true); // true = testnet
 
 // Helper function to get authorization token
 function getAuthToken() {
@@ -98,12 +100,22 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
         // Hash password
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
+        // Create Stellar wallet
+        $stellarWallet = $stellarService->createAndFundTestnetWallet();
+
+        if (!$stellarWallet['success']) {
+            error_log("Failed to create Stellar wallet: " . ($stellarWallet['error'] ?? 'Unknown error'));
+            sendResponse(['error' => 'Failed to create wallet'], 500);
+        }
+
         // Create user
         $userData = [
             'privyId' => 'user_' . bin2hex(random_bytes(16)),
             'email' => $email,
             'passwordHash' => $passwordHash,
-            'authProvider' => 'email'
+            'authProvider' => 'email',
+            'stellarPublicKey' => $stellarWallet['publicKey'],
+            'stellarSecretKey' => $stellarWallet['secretKey']
         ];
 
         $user = $userModel->create($userData);
@@ -111,6 +123,8 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
         if (!$user) {
             sendResponse(['error' => 'Failed to create user'], 500);
         }
+
+        error_log("Stellar wallet created and funded for user: " . $stellarWallet['publicKey']);
 
         // Generate token
         $token = generateToken($user->privyId);
@@ -290,13 +304,23 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
                 $user = $userModel->update($user->privyId, $updateData);
             }
         } else {
+            // Create Stellar wallet for new user
+            $stellarWallet = $stellarService->createAndFundTestnetWallet();
+
+            if (!$stellarWallet['success']) {
+                error_log("Failed to create Stellar wallet: " . ($stellarWallet['error'] ?? 'Unknown error'));
+                sendResponse(['error' => 'Failed to create wallet'], 500);
+            }
+
             // Create new user
             $userData = [
                 'privyId' => 'google_' . $googleId,
                 'email' => $email,
                 'authProvider' => 'google',
                 'name' => $name,
-                'profilePicture' => $profilePicture
+                'profilePicture' => $profilePicture,
+                'stellarPublicKey' => $stellarWallet['publicKey'],
+                'stellarSecretKey' => $stellarWallet['secretKey']
             ];
 
             $user = $userModel->create($userData);
@@ -304,6 +328,8 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
             if (!$user) {
                 sendResponse(['error' => 'Failed to create user'], 500);
             }
+
+            error_log("Stellar wallet created and funded for Google user: " . $stellarWallet['publicKey']);
 
             // Send welcome email (async with delay is acceptable)
             try {

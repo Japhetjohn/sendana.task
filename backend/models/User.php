@@ -29,8 +29,8 @@ class User {
                 'name' => $data['name'] ?? null,
                 'profilePicture' => $data['profilePicture'] ?? null
             ],
-            'stellarPublicKey' => null,
-            'stellarSecretKey' => null,
+            'stellarPublicKey' => $data['stellarPublicKey'] ?? null,
+            'stellarSecretKey' => $data['stellarSecretKey'] ?? null,
             'walletAddress' => null,
             'balance' => [
                 'USD' => 0,
