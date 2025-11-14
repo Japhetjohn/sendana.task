@@ -15,7 +15,8 @@ if (file_exists(__DIR__ . $uri)) {
 }
 
 // Route API requests (both /backend/api and /api for convenience)
-if (strpos($uri, '/backend/api/auth') !== false || strpos($uri, '/api/auth') !== false) {
+if (strpos($uri, '/backend/api/auth') !== false || strpos($uri, '/api/auth') !== false ||
+    strpos($uri, '/backend/api/wallet') !== false || strpos($uri, '/api/wallet') !== false) {
     require __DIR__ . '/backend/api/auth.php';
     exit();
 }
