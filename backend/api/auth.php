@@ -357,6 +357,42 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
     }
 }
 
+// GET /wallet - Get user's wallet information
+elseif ($method === 'GET' && strpos($path, '/wallet') !== false) {
+    try {
+        $token = getAuthToken();
+        if (!$token) {
+            sendResponse(['error' => 'No token provided'], 401);
+        }
+
+        $userId = verifyToken($token);
+        if (!$userId) {
+            sendResponse(['error' => 'Invalid or expired token'], 401);
+        }
+
+        $user = $userModel->findByPrivyId($userId);
+
+        if (!$user) {
+            sendResponse(['error' => 'User not found'], 404);
+        }
+
+        // Return wallet information
+        sendResponse([
+            'success' => true,
+            'wallet' => [
+                'address' => $user->stellarPublicKey ?? null,
+                'publicKey' => $user->stellarPublicKey ?? null,
+                'balance' => $user->balance ?? ['USD' => 0, 'EUR' => 0, 'GBP' => 0],
+                'email' => $user->email ?? null
+            ]
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Get wallet error: " . $e->getMessage());
+        sendResponse(['error' => 'Server error fetching wallet'], 500);
+    }
+}
+
 // GET /auth/privy-config - Get Privy app ID for frontend
 elseif ($method === 'GET' && strpos($path, '/auth/privy-config') !== false) {
     sendResponse([
