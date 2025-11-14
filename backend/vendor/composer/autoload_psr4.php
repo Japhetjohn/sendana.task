@@ -6,5 +6,17 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'phpseclib3\\' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
+    'Yosymfony\\Toml\\' => array($vendorDir . '/yosymfony/toml/src'),
+    'Yosymfony\\ParserUtils\\' => array($vendorDir . '/yosymfony/parser-utils/src'),
+    'Soneso\\StellarSDK\\' => array($vendorDir . '/soneso/stellar-php-sdk/Soneso/StellarSDK'),
+    'Soneso\\StellarSDKTests\\' => array($vendorDir . '/soneso/stellar-php-sdk/Soneso/StellarSDKTests'),
+    'Psr\\Http\\Message\\' => array($vendorDir . '/psr/http-factory/src', $vendorDir . '/psr/http-message/src'),
+    'Psr\\Http\\Client\\' => array($vendorDir . '/psr/http-client/src'),
+    'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
     'PHPMailer\\PHPMailer\\' => array($vendorDir . '/phpmailer/phpmailer/src'),
+    'GuzzleHttp\\Psr7\\' => array($vendorDir . '/guzzlehttp/psr7/src'),
+    'GuzzleHttp\\Promise\\' => array($vendorDir . '/guzzlehttp/promises/src'),
+    'GuzzleHttp\\' => array($vendorDir . '/guzzlehttp/guzzle/src'),
+    'Base32\\' => array($vendorDir . '/christian-riesen/base32/src'),
 );

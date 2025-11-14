@@ -6,17 +6,101 @@ namespace Composer\Autoload;
 
 class ComposerStaticInit2185d2f99bcd56787481d9357a5972d3
 {
+    public static $files = array (
+        '7b11c4dc42b3b3023073cb14e519683c' => __DIR__ . '/..' . '/ralouphie/getallheaders/src/getallheaders.php',
+        '6e3fae29631ef280660b3cdad06f25a8' => __DIR__ . '/..' . '/symfony/deprecation-contracts/function.php',
+        '37a3dc5111fe8f707ab4c132ef1dbc62' => __DIR__ . '/..' . '/guzzlehttp/guzzle/src/functions_include.php',
+        '3109cb1a231dcd04bee1f9f620d46975' => __DIR__ . '/..' . '/paragonie/sodium_compat/autoload.php',
+        'decc78cc4436b1292c6c0d151b19445c' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/bootstrap.php',
+    );
+
     public static $prefixLengthsPsr4 = array (
+        'p' =>
+        array (
+            'phpseclib3\\' => 11,
+        ),
+        'Y' =>
+        array (
+            'Yosymfony\\Toml\\' => 15,
+            'Yosymfony\\ParserUtils\\' => 22,
+        ),
+        'S' =>
+        array (
+            'Soneso\\StellarSDK\\' => 18,
+            'Soneso\\StellarSDKTests\\' => 23,
+        ),
         'P' =>
         array (
+            'Psr\\Http\\Message\\' => 17,
+            'Psr\\Http\\Client\\' => 16,
+            'ParagonIE\\ConstantTime\\' => 23,
             'PHPMailer\\PHPMailer\\' => 20,
+        ),
+        'G' =>
+        array (
+            'GuzzleHttp\\Psr7\\' => 16,
+            'GuzzleHttp\\Promise\\' => 19,
+            'GuzzleHttp\\' => 11,
+        ),
+        'B' =>
+        array (
+            'Base32\\' => 7,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
+        'phpseclib3\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib',
+        ),
+        'Yosymfony\\Toml\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/yosymfony/toml/src',
+        ),
+        'Yosymfony\\ParserUtils\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/yosymfony/parser-utils/src',
+        ),
+        'Soneso\\StellarSDK\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/soneso/stellar-php-sdk/Soneso/StellarSDK',
+        ),
+        'Soneso\\StellarSDKTests\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/soneso/stellar-php-sdk/Soneso/StellarSDKTests',
+        ),
+        'Psr\\Http\\Message\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/psr/http-factory/src',
+            1 => __DIR__ . '/..' . '/psr/http-message/src',
+        ),
+        'Psr\\Http\\Client\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/psr/http-client/src',
+        ),
+        'ParagonIE\\ConstantTime\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/paragonie/constant_time_encoding/src',
+        ),
         'PHPMailer\\PHPMailer\\' =>
         array (
             0 => __DIR__ . '/..' . '/phpmailer/phpmailer/src',
+        ),
+        'GuzzleHttp\\Psr7\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/guzzlehttp/psr7/src',
+        ),
+        'GuzzleHttp\\Promise\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/guzzlehttp/promises/src',
+        ),
+        'GuzzleHttp\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/guzzlehttp/guzzle/src',
+        ),
+        'Base32\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/christian-riesen/base32/src',
         ),
     );
 
