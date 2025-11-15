@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     try {
-      const response = await fetch("/api/wallet", {
+      const response = await fetch("/backend/api/wallet.php", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -127,8 +127,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const data = await response.json();
       if (data.success && data.wallet) {
-        if (walletAddressText) walletAddressText.textContent = data.wallet.address || "No address found";
-        if (walletEmail) walletEmail.textContent = data.wallet.email || "-";
+        if (walletAddressText) walletAddressText.textContent = data.wallet.publicKey || "No address found";
+        if (walletEmail) walletEmail.textContent = localStorage.getItem("userEmail") || "-";
       } else {
         if (walletAddressText) walletAddressText.textContent = "Error loading wallet";
       }
