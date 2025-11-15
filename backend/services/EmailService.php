@@ -6,9 +6,11 @@ use PHPMailer\PHPMailer\Exception;
 
 class EmailService {
     private $config;
+    private $useBrevo;
 
     public function __construct() {
         $this->loadEnv();
+        $this->useBrevo = ($this->config['service'] ?? 'brevo') === 'brevo' && !empty($this->config['brevo_api_key']);
     }
 
     /**
@@ -20,22 +22,97 @@ class EmailService {
             $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             foreach ($lines as $line) {
                 if (strpos(trim($line), '#') === 0) continue;
+                if (strpos($line, '=') === false) continue;
                 list($key, $value) = explode('=', $line, 2);
                 $_ENV[trim($key)] = trim($value);
             }
         }
 
         $this->config = [
+            'service' => $_ENV['EMAIL_SERVICE'] ?? 'brevo',
             'user' => $_ENV['EMAIL_USER'] ?? '',
             'password' => $_ENV['EMAIL_PASSWORD'] ?? '',
-            'from' => $_ENV['EMAIL_FROM'] ?? 'Sendana Team <noreply@sendana.com>'
+            'from' => $_ENV['EMAIL_FROM'] ?? 'Sendana Team <noreply@sendana.com>',
+            'brevo_api_key' => $_ENV['BREVO_API_KEY'] ?? ''
         ];
     }
 
     /**
-     * Send email using PHPMailer (reliable and fast)
+     * Send email using Brevo API (recommended - uses HTTPS, bypasses SMTP blocks)
      */
-    public function sendEmail($to, $subject, $htmlBody, $textBody = '') {
+    private function sendViaBrevo($to, $subject, $htmlBody, $textBody = '') {
+        $apiKey = $this->config['brevo_api_key'];
+
+        if (empty($apiKey)) {
+            error_log("Brevo API key not configured");
+            return false;
+        }
+
+        // Parse sender email and name
+        $fromEmail = $this->config['user'];
+        $fromName = 'Sendana Team';
+
+        if (preg_match('/^(.+?)\s*<(.+?)>$/', $this->config['from'], $matches)) {
+            $fromName = trim($matches[1]);
+            $fromEmail = trim($matches[2]);
+        }
+
+        // Prepare Brevo API request
+        $data = [
+            'sender' => [
+                'name' => $fromName,
+                'email' => $fromEmail
+            ],
+            'to' => [
+                [
+                    'email' => $to,
+                    'name' => explode('@', $to)[0]
+                ]
+            ],
+            'subject' => $subject,
+            'htmlContent' => $htmlBody
+        ];
+
+        if ($textBody) {
+            $data['textContent'] = $textBody;
+        }
+
+        // Send via Brevo API using cURL
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, 'https://api.brevo.com/v3/smtp/email');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'accept: application/json',
+            'api-key: ' . $apiKey,
+            'content-type: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            error_log("Brevo API Error: " . $error);
+            return false;
+        }
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            error_log("✅ Email sent successfully via Brevo to: $to");
+            return true;
+        } else {
+            error_log("❌ Brevo API returned HTTP $httpCode: " . $response);
+            return false;
+        }
+    }
+
+    /**
+     * Send email using PHPMailer SMTP (fallback)
+     */
+    private function sendViaSMTP($to, $subject, $htmlBody, $textBody = '') {
         $mail = new PHPMailer(true);
 
         try {
@@ -68,13 +145,30 @@ class EmailService {
             $mail->AltBody = $textBody ?: strip_tags($htmlBody);
 
             $mail->send();
-            error_log("Email sent successfully to: $to");
+            error_log("✅ Email sent successfully via SMTP to: $to");
             return true;
 
         } catch (Exception $e) {
-            error_log("Email failed to send: {$mail->ErrorInfo}");
+            error_log("❌ SMTP Email failed: {$mail->ErrorInfo}");
             return false;
         }
+    }
+
+    /**
+     * Send email using configured service (Brevo or SMTP)
+     */
+    public function sendEmail($to, $subject, $htmlBody, $textBody = '') {
+        // Try Brevo first if configured
+        if ($this->useBrevo) {
+            $result = $this->sendViaBrevo($to, $subject, $htmlBody, $textBody);
+            if ($result) {
+                return true;
+            }
+            error_log("Brevo failed, falling back to SMTP...");
+        }
+
+        // Fallback to SMTP
+        return $this->sendViaSMTP($to, $subject, $htmlBody, $textBody);
     }
 
     /**
@@ -104,36 +198,26 @@ class EmailService {
         $name = $firstName ? $firstName : 'there';
         $subject = "You're in! Let's make money move";
         $htmlBody = $this->getWelcomeEmailTemplate($name);
+        $textBody = strip_tags($htmlBody);
 
         // Log the email we're about to send
-        error_log("Queuing welcome email to: $email (Name: $name)");
+        error_log("Sending welcome email to: $email (Name: $name) via " . ($this->useBrevo ? 'Brevo' : 'SMTP'));
 
-        // Create data file for background process
-        $emailData = [
-            'to' => $email,
-            'subject' => $subject,
-            'html' => $htmlBody,
-            'text' => strip_tags($htmlBody),
-            'name' => $name
-        ];
+        try {
+            // Send email directly (Brevo is fast via HTTPS, no need for background processing)
+            $result = $this->sendEmail($email, $subject, $htmlBody, $textBody);
 
-        $tmpFile = '/tmp/sendana_email_' . md5($email . time()) . '.json';
-        file_put_contents($tmpFile, json_encode($emailData));
+            if ($result) {
+                error_log("✅ Welcome email sent successfully to: $email");
+            } else {
+                error_log("❌ Failed to send welcome email to: $email");
+            }
 
-        $scriptPath = __DIR__ . "/../scripts/send_email_async.php";
-
-        // Fire and forget - spawn background process
-        $cmd = sprintf(
-            'php %s %s > /dev/null 2>&1 &',
-            escapeshellarg($scriptPath),
-            escapeshellarg($tmpFile)
-        );
-
-        // Execute in background without waiting
-        exec($cmd);
-
-        error_log("Email queued for: $email");
-        return true;
+            return $result;
+        } catch (Exception $e) {
+            error_log("❌ Welcome email exception for $email: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -250,7 +334,7 @@ class EmailService {
             <p>No complicated steps. No long paperwork. Just money that moves the way you need it to.</p>
 
             <p style="text-align: center;">
-                <a href="http://localhost:8000/frontend/pages/index.html" class="cta-button">Get Started</a>
+                <a href="http://agentq.usesendana.com" class="cta-button">Get Started</a>
             </p>
 
             <p>Welcome aboard,<br>

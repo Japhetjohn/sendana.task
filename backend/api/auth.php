@@ -22,7 +22,7 @@ $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $userModel = new User();
 $privyAuth = new PrivyAuth();
 $emailService = new EmailService();
-$stellarService = new StellarService(true);
+$stellarService = new StellarService(false);
 
 function getAuthToken() {
     $headers = getallheaders();

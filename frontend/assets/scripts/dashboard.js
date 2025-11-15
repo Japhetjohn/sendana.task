@@ -113,7 +113,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     try {
-      const response = await fetch("http://localhost:8000/api/wallet", {
+      const response = await fetch("/api/wallet", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
