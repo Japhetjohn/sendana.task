@@ -723,8 +723,15 @@
         </button>
 
         <div class="mb-6">
-          <h2 class="font-semibold text-2xl text-col-5 mb-2">Your Stellar Wallet</h2>
-          <p class="text-col-8 text-sm">Your unique Stellar blockchain wallet address</p>
+          <h2 class="font-semibold text-2xl text-col-5 mb-2">Your Sendana Wallet</h2>
+          <p class="text-col-8 text-sm">Scan this QR code to send funds to your wallet address</p>
+        </div>
+
+        <!-- QR Code Section -->
+        <div class="flex justify-center mb-6">
+          <div class="bg-white p-4 rounded-2xl border-2 border-col-2 inline-block">
+            <canvas id="walletQRCode" class="max-w-[240px] max-h-[240px]"></canvas>
+          </div>
         </div>
 
         <div class="bg-col-3 rounded-xl p-4 mb-4">
@@ -759,6 +766,8 @@
       </div>
     </div>
 
-    <script src="/frontend/assets/scripts/dashboard.js?v=20251115"></script>
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="/frontend/assets/scripts/dashboard.js?v=20251115-2"></script>
   </body>
 </html>

@@ -127,14 +127,47 @@ document.addEventListener("DOMContentLoaded", function () {
 
       const data = await response.json();
       if (data.success && data.wallet) {
-        if (walletAddressText) walletAddressText.textContent = data.wallet.publicKey || "No address found";
+        const publicKey = data.wallet.publicKey || "No address found";
+        if (walletAddressText) walletAddressText.textContent = publicKey;
         if (walletEmail) walletEmail.textContent = localStorage.getItem("userEmail") || "-";
+
+        // Generate QR code
+        generateWalletQRCode(publicKey);
       } else {
         if (walletAddressText) walletAddressText.textContent = "Error loading wallet";
       }
     } catch (error) {
       console.error("Error fetching wallet:", error);
       if (walletAddressText) walletAddressText.textContent = "Error loading wallet";
+    }
+  }
+
+  // Generate QR code for wallet address
+  function generateWalletQRCode(address) {
+    const qrCanvas = document.getElementById("walletQRCode");
+    if (!qrCanvas || !address || address === "No address found") return;
+
+    // Clear previous QR code
+    qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+
+    // Check if QRCode library is loaded
+    if (typeof QRCode === 'undefined') {
+      console.error('QRCode library not loaded');
+      return;
+    }
+
+    // Generate new QR code using canvas
+    try {
+      const qr = new QRCode(qrCanvas, {
+        text: address,
+        width: 240,
+        height: 240,
+        colorDark: "#5F2DC4", // Sendana purple color
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    } catch (error) {
+      console.error('Error generating QR code:', error);
     }
   }
 
