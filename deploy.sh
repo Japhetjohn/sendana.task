@@ -1,66 +1,88 @@
 #!/bin/bash
-# Sendana Production Deployment Script
+# Quick deployment script for Sendana
+# Run this ON THE SERVER after uploading/cloning the code
 
-SERVER_USER="agentq"
-SERVER_IP="129.212.134.71"
-SERVER_PATH="~/sendana"
-LOCAL_PATH="/home/japhet/Desktop/sendana.task"
+set -e  # Exit on error
 
-echo "🚀 Sendana Deployment Script"
-echo "=============================="
-echo ""
+echo "======================================"
+echo "Sendana Deployment Script"
+echo "======================================"
+echo
 
-# Step 1: Sync files to server
-echo "📦 Step 1: Uploading files to server..."
-rsync -avz --progress \
-  --exclude 'node_modules' \
-  --exclude '.git' \
-  --exclude '*.log' \
-  --exclude 'vendor' \
-  --exclude '.env.example' \
-  "${LOCAL_PATH}/" \
-  "${SERVER_USER}@${SERVER_IP}:${SERVER_PATH}/"
-
-if [ $? -eq 0 ]; then
-    echo "✅ Files uploaded successfully"
-else
-    echo "❌ Failed to upload files"
+# Check if we're in the right directory
+if [[ ! -f "backend/api/auth.php" ]]; then
+    echo "Error: Please run this script from the sendana root directory"
     exit 1
 fi
 
-echo ""
-echo "🔧 Step 2: Installing dependencies on server..."
+# Install backend dependencies
+echo "[1/6] Installing backend dependencies..."
+cd backend
+if [[ ! -f "composer.phar" ]]; then
+    echo "  Downloading composer..."
+    curl -sS https://getcomposer.org/installer | php
+fi
+php composer.phar install --no-dev --optimize-autoloader
+cd ..
+echo "  ✓ Backend dependencies installed"
 
-# Step 2: Install composer dependencies
-ssh "${SERVER_USER}@${SERVER_IP}" << 'ENDSSH'
-cd ~/sendana/backend
-echo "Installing Composer dependencies..."
-composer install --no-dev --optimize-autoloader
-
-echo ""
-echo "Setting permissions..."
-chmod -R 755 ~/sendana
-chmod 600 ~/sendana/backend/.env 2>/dev/null || true
-
-echo ""
-echo "Checking PHP extensions..."
-php -m | grep -E "(mongodb|json|curl)"
-
-ENDSSH
-
-if [ $? -eq 0 ]; then
-    echo "✅ Server setup complete"
+# Set up environment file
+echo "[2/6] Setting up environment..."
+if [[ ! -f ".env" ]]; then
+    cp .env.example .env
+    echo "  Created .env file - please configure it!"
 else
-    echo "❌ Server setup failed"
+    echo "  .env already exists"
+fi
+echo "  ✓ Environment configured"
+
+# Create data directory and initialize database
+echo "[3/6] Initializing database..."
+mkdir -p backend/data
+if [[ ! -f "backend/data/users.json" ]] || [[ ! -s "backend/data/users.json" ]]; then
+    echo "[]" > backend/data/users.json
+    echo "  Created empty users.json"
+fi
+echo "  ✓ Database initialized"
+
+# Set permissions
+echo "[4/6] Setting permissions..."
+chmod -R 755 frontend backend
+chmod -R 775 backend/data
+chmod 666 backend/data/users.json
+find backend -type f -name "*.php" -exec chmod 644 {} \;
+echo "  ✓ Permissions set"
+
+# Check PHP version
+echo "[5/6] Checking PHP..."
+PHP_VERSION=$(php -v | head -n 1)
+echo "  PHP version: $PHP_VERSION"
+if command -v php &> /dev/null; then
+    echo "  ✓ PHP is installed"
+else
+    echo "  ✗ PHP not found! Please install PHP 7.4 or higher"
     exit 1
 fi
 
-echo ""
-echo "🎉 Deployment Complete!"
-echo ""
-echo "Next Steps:"
-echo "1. SSH into the server: ssh ${SERVER_USER}@${SERVER_IP}"
-echo "2. Start the server: cd ~/sendana && php -S 0.0.0.0:8080 router.php"
-echo "3. Test: curl http://agentq.usesendana.com/api/health"
-echo ""
-echo "📝 See DEPLOYMENT_GUIDE.md for detailed instructions"
+# Start PHP server (optional)
+echo "[6/6] Starting PHP server..."
+echo
+echo "You can start the PHP server with:"
+echo "  php -S 0.0.0.0:8080 -t . &"
+echo
+echo "Or use PM2:"
+echo "  pm2 start 'php -S 0.0.0.0:8080' --name sendana"
+echo
+
+echo "======================================"
+echo "Deployment Complete! 🎉"
+echo "======================================"
+echo
+echo "Next steps:"
+echo "1. Configure .env file with your settings"
+echo "2. Start PHP server on port 8080"
+echo "3. Configure nginx (see DEPLOY_GUIDE.md)"
+echo "4. Test at: http://agentq.usesendana.com"
+echo
+echo "For detailed instructions, see: DEPLOY_GUIDE.md"
+echo
