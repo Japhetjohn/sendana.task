@@ -4,9 +4,12 @@ require_once __DIR__ . '/../config/database.php';
 class User {
     private $db;
     private $collection = 'users';
+    private $isMongoDb = false;
 
     public function __construct() {
         $this->db = new Database();
+        // Check if MongoDB extension is loaded
+        $this->isMongoDb = extension_loaded('mongodb');
     }
 
     // Find user by Privy ID
@@ -19,11 +22,11 @@ class User {
         return $this->db->findOne($this->collection, ['email' => $email]);
     }
 
-    // Find user by MongoDB _id
+    // Find user by _id
     public function findById($id) {
         try {
-            // Convert string ID to MongoDB ObjectId
-            if (is_string($id)) {
+            // For MongoDB, convert string ID to ObjectId
+            if ($this->isMongoDb && is_string($id)) {
                 $id = new MongoDB\BSON\ObjectId($id);
             }
             return $this->db->findOne($this->collection, ['_id' => $id]);
@@ -63,9 +66,14 @@ class User {
             $document['privyWalletId'] = $data['privyWalletId'];
         }
 
-        // MongoDB timestamps
-        $document['createdAt'] = new MongoDB\BSON\UTCDateTime();
-        $document['updatedAt'] = new MongoDB\BSON\UTCDateTime();
+        // Add timestamps - use MongoDB dates if available, otherwise use timestamps
+        if ($this->isMongoDb) {
+            $document['createdAt'] = new MongoDB\BSON\UTCDateTime();
+            $document['updatedAt'] = new MongoDB\BSON\UTCDateTime();
+        } else {
+            $document['createdAt'] = time();
+            $document['updatedAt'] = time();
+        }
 
         // Add password hash if provided
         if (isset($data['passwordHash'])) {
@@ -75,7 +83,16 @@ class User {
         $result = $this->db->insertOne($this->collection, $document);
 
         // Fetch and return the created user by _id
-        return $this->findById($result->getInsertedId());
+        if (is_callable([$result, 'getInsertedId'])) {
+            $insertedId = $result->getInsertedId();
+        } else if (is_object($result) && isset($result->inserted_id)) {
+            $insertedId = $result->inserted_id;
+        } else {
+            // For JSON database, the ID is already in the document
+            return $this->findByEmail($data['email']);
+        }
+
+        return $this->findById($insertedId);
     }
 
     // Update user
@@ -110,13 +127,18 @@ class User {
             $updateData['migratedToPrivy'] = $data['migratedToPrivy'];
         }
 
-        $updateData['updatedAt'] = new MongoDB\BSON\UTCDateTime();
+        // Add timestamp - use MongoDB date if available
+        if ($this->isMongoDb) {
+            $updateData['updatedAt'] = new MongoDB\BSON\UTCDateTime();
+        } else {
+            $updateData['updatedAt'] = time();
+        }
 
         // Determine if identifier is privyId or _id
         $filter = [];
-        if (is_object($identifier) && get_class($identifier) === 'MongoDB\BSON\ObjectId') {
+        if ($this->isMongoDb && is_object($identifier) && get_class($identifier) === 'MongoDB\BSON\ObjectId') {
             $filter['_id'] = $identifier;
-        } else if (is_string($identifier) && strlen($identifier) === 24 && ctype_xdigit($identifier)) {
+        } else if ($this->isMongoDb && is_string($identifier) && strlen($identifier) === 24 && ctype_xdigit($identifier)) {
             // Looks like a MongoDB ObjectId string
             try {
                 $filter['_id'] = new MongoDB\BSON\ObjectId($identifier);
@@ -124,7 +146,12 @@ class User {
                 $filter['privyId'] = $identifier;
             }
         } else {
-            $filter['privyId'] = $identifier;
+            // For JSON database or non-ObjectId strings, use privyId or _id string
+            if (strpos($identifier, 'user_') === 0) {
+                $filter['_id'] = $identifier;
+            } else {
+                $filter['privyId'] = $identifier;
+            }
         }
 
         $this->db->updateOne($this->collection, $filter, $updateData);
@@ -137,11 +164,11 @@ class User {
         }
     }
 
-    // Convert MongoDB object to array for JSON response
+    // Convert object to array for JSON response
     public function toArray($user) {
         if (!$user) return null;
 
-        // Convert MongoDB object to array
+        // Convert object to array
         $user = is_object($user) ? (array) $user : $user;
 
         $result = [
@@ -177,9 +204,15 @@ class User {
             $result['balance']['GBP'] = $balance['GBP'] ?? 0;
         }
 
-        // Handle MongoDB createdAt
-        if (isset($user['createdAt']) && is_object($user['createdAt']) && method_exists($user['createdAt'], 'toDateTime')) {
-            $result['createdAt'] = $user['createdAt']->toDateTime()->format('c');
+        // Handle createdAt - MongoDB or timestamp
+        if (isset($user['createdAt'])) {
+            if (is_object($user['createdAt']) && method_exists($user['createdAt'], 'toDateTime')) {
+                // MongoDB date
+                $result['createdAt'] = $user['createdAt']->toDateTime()->format('c');
+            } else if (is_numeric($user['createdAt'])) {
+                // Unix timestamp
+                $result['createdAt'] = date('c', $user['createdAt']);
+            }
         }
 
         return $result;
