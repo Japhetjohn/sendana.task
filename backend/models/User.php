@@ -19,6 +19,20 @@ class User {
         return $this->db->findOne($this->collection, ['email' => $email]);
     }
 
+    // Find user by MongoDB _id
+    public function findById($id) {
+        try {
+            // Convert string ID to MongoDB ObjectId
+            if (is_string($id)) {
+                $id = new MongoDB\BSON\ObjectId($id);
+            }
+            return $this->db->findOne($this->collection, ['_id' => $id]);
+        } catch (Exception $e) {
+            error_log("Error finding user by ID: " . $e->getMessage());
+            return null;
+        }
+    }
+
     // Create new user
     public function create($data) {
         $document = [
@@ -56,7 +70,7 @@ class User {
     }
 
     // Update user
-    public function update($privyId, $data) {
+    public function update($identifier, $data) {
         $updateData = [];
 
         if (isset($data['email'])) {
@@ -77,12 +91,41 @@ class User {
         if (isset($data['stellarSecretKey'])) {
             $updateData['stellarSecretKey'] = $data['stellarSecretKey'];
         }
+        if (isset($data['privyId'])) {
+            $updateData['privyId'] = $data['privyId'];
+        }
+        if (isset($data['privyWalletId'])) {
+            $updateData['privyWalletId'] = $data['privyWalletId'];
+        }
+        if (isset($data['migratedToPrivy'])) {
+            $updateData['migratedToPrivy'] = $data['migratedToPrivy'];
+        }
 
         $updateData['updatedAt'] = new MongoDB\BSON\UTCDateTime();
 
-        $this->db->updateOne($this->collection, ['privyId' => $privyId], $updateData);
+        // Determine if identifier is privyId or _id
+        $filter = [];
+        if (is_object($identifier) && get_class($identifier) === 'MongoDB\BSON\ObjectId') {
+            $filter['_id'] = $identifier;
+        } else if (is_string($identifier) && strlen($identifier) === 24 && ctype_xdigit($identifier)) {
+            // Looks like a MongoDB ObjectId string
+            try {
+                $filter['_id'] = new MongoDB\BSON\ObjectId($identifier);
+            } catch (Exception $e) {
+                $filter['privyId'] = $identifier;
+            }
+        } else {
+            $filter['privyId'] = $identifier;
+        }
 
-        return $this->findByPrivyId($privyId);
+        $this->db->updateOne($this->collection, $filter, $updateData);
+
+        // Return updated user - try by privyId first, then by _id
+        if (isset($filter['privyId'])) {
+            return $this->findByPrivyId($filter['privyId']);
+        } else {
+            return $this->findById($filter['_id']);
+        }
     }
 
     // Convert MongoDB object to array for JSON response
