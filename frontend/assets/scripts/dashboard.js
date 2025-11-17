@@ -150,28 +150,30 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // Clear previous QR code
+    qrContainer.innerHTML = '';
+
     // Check if QRCode library is loaded
     if (typeof QRCode === 'undefined') {
       console.error('QRCode library not loaded');
+      qrContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;">QR Code library not available</div>';
       return;
     }
 
-    // Clear previous QR code completely
-    qrContainer.innerHTML = '';
-
     // Generate new QR code
     try {
-      const qr = new QRCode(qrContainer, {
+      new QRCode(qrContainer, {
         text: address,
         width: 240,
         height: 240,
-        colorDark: "#5F2DC4", // Sendana purple color
+        colorDark: "#5F2DC4",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.H
       });
       console.log('QR code generated successfully for address:', address);
     } catch (error) {
       console.error('Error generating QR code:', error);
+      qrContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#999;">Error generating QR code</div>';
     }
   }
 
