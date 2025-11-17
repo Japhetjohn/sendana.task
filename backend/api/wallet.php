@@ -65,8 +65,19 @@ if (!$userId) {
     sendResponse(['error' => 'Invalid or expired token'], 401);
 }
 
-// Get user data
+// Get user data - try by privyId first, then by _id or email
 $user = $userModel->findByPrivyId($userId);
+
+// If not found by privyId, try by _id or email (for old users)
+if (!$user) {
+    // Try to find by MongoDB _id
+    try {
+        $user = $userModel->findById($userId);
+    } catch (Exception $e) {
+        // If that fails, try by email
+        $user = $userModel->findByEmail($userId);
+    }
+}
 
 if (!$user) {
     sendResponse(['error' => 'User not found'], 404);
@@ -95,27 +106,34 @@ if (!$walletAddress && isset($user->privyWalletId)) {
     }
 }
 
-// Auto-migrate old wallets to Privy
-if ($shouldMigrateToPrivy) {
+// Auto-migrate old wallets to Privy OR create new wallet if none exists
+if ($shouldMigrateToPrivy || !$walletAddress) {
     try {
         $privyUserId = $user->privyId ?? ('user_' . bin2hex(random_bytes(16)));
         $stellarWallet = $privyAuth->createStellarWallet($privyUserId);
 
         if ($stellarWallet && isset($stellarWallet['address'])) {
             // Update user with new Privy wallet
-            $userModel->update($user->privyId ?? $user->_id, [
+            $updateData = [
                 'privyWalletId' => $stellarWallet['id'],
                 'stellarPublicKey' => $stellarWallet['address'],
                 'privyId' => $privyUserId,
                 'migratedToPrivy' => true
-            ]);
+            ];
+
+            // Use _id for old users, privyId for new users
+            $updateKey = $user->privyId ?? $user->_id;
+            $userModel->update($updateKey, $updateData);
 
             $walletAddress = $stellarWallet['address'];
-            error_log("Auto-migrated user {$user->email} to Privy wallet: " . $walletAddress);
+            error_log("Auto-migrated/created Privy wallet for user {$user->email}: " . $walletAddress);
         }
     } catch (Exception $e) {
-        error_log("Auto-migration failed for user {$user->email}: " . $e->getMessage());
-        // Continue with old wallet if migration fails
+        error_log("Wallet creation failed for user {$user->email}: " . $e->getMessage());
+        // If no old wallet and creation fails, return error
+        if (!$walletAddress) {
+            sendResponse(['error' => 'Failed to create wallet: ' . $e->getMessage()], 500);
+        }
     }
 }
 
