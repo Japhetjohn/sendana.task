@@ -10,6 +10,23 @@ class PrivyAuth {
         $this->app_secret = '3hRZCYhv4CP9iRsT33GVD8TCtzJhAmooMaQ94CWvDXbwSS75wvgbKuCMbFLfLgCfacSRwxyfK11qq6jNjh3BCciE';
     }
 
+    // Generate a CUID2-compatible ID for Privy
+    private function generateCuid2() {
+        // CUID2 format: lowercase alphanumeric, starts with letter, ~24-32 chars
+        $chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        $letters = 'abcdefghijklmnopqrstuvwxyz';
+
+        // Start with a letter
+        $cuid = $letters[random_int(0, 25)];
+
+        // Add random characters (total length ~24)
+        for ($i = 0; $i < 23; $i++) {
+            $cuid .= $chars[random_int(0, 35)];
+        }
+
+        return $cuid;
+    }
+
     // Verify Privy access token
     public function verifyToken($token) {
         try {
@@ -79,17 +96,15 @@ class PrivyAuth {
         try {
             $url = $this->api_base_url . '/v1/wallets';
 
+            // For embedded wallets, don't send owner_id - Privy manages this
             $requestBody = [
                 'chain_type' => 'stellar'
             ];
 
-            // If userId provided, link wallet to user
-            if ($userId) {
-                $requestBody['owner_id'] = $userId;
-            }
-
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);  // 10 second timeout
+            curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);  // 5 second connection timeout
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
                 'Content-Type: application/json',
                 'Authorization: ' . $this->getAuthHeader(),
@@ -100,8 +115,14 @@ class PrivyAuth {
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($requestBody));
 
             $response = curl_exec($ch);
+            $curlError = curl_error($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             curl_close($ch);
+
+            if ($curlError) {
+                error_log("Privy create Stellar wallet CURL error: " . $curlError);
+                return null;
+            }
 
             error_log("Privy create Stellar wallet response code: " . $httpCode);
             error_log("Privy create Stellar wallet response: " . $response);

@@ -89,29 +89,13 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
 
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-        // Generate unique Privy user ID
-        $privyUserId = 'user_' . bin2hex(random_bytes(16));
-
-        // Create Stellar wallet via Privy
-        $stellarWallet = $privyAuth->createStellarWallet($privyUserId);
-
-        if (!$stellarWallet || !isset($stellarWallet['address'])) {
-            error_log("Failed to create Privy Stellar wallet for user: " . $email);
-            sendResponse(['error' => 'Failed to create wallet'], 500);
-        }
-
-        $walletAddress = $stellarWallet['address'];
-        $walletId = $stellarWallet['id'] ?? null;
-
-        error_log("Privy Stellar wallet created: " . $walletAddress . " (ID: " . $walletId . ")");
-
+        // Wallet will be created by frontend via Privy SDK
+        // Create user without wallet initially
         $userData = [
-            'privyId' => $privyUserId,
             'email' => $email,
             'passwordHash' => $passwordHash,
-            'authProvider' => 'email',
-            'stellarPublicKey' => $walletAddress,
-            'privyWalletId' => $walletId
+            'authProvider' => 'email'
+            // Wallet fields will be added later by /privy/create-wallet endpoint
         ];
 
         $user = $userModel->create($userData);
@@ -120,9 +104,11 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
             sendResponse(['error' => 'Failed to create user'], 500);
         }
 
-        error_log("User created successfully with Privy Stellar wallet: " . $walletAddress);
+        error_log("User created successfully: " . $email);
 
-        $token = generateToken($user->privyId);
+        // Generate token using user ID (wallet will be added later by frontend)
+        $userId = isset($user->privyId) ? $user->privyId : (string)$user->_id;
+        $token = generateToken($userId);
 
         try {
             $firstName = explode('@', $email)[0];
@@ -291,31 +277,14 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
                 $user = $userModel->update($user->privyId, $updateData);
             }
         } else {
-            // Generate unique Privy user ID for Google user
-            $privyUserId = 'google_' . $googleId;
-
-            // Create Stellar wallet via Privy
-            $stellarWallet = $privyAuth->createStellarWallet($privyUserId);
-
-            if (!$stellarWallet || !isset($stellarWallet['address'])) {
-                error_log("Failed to create Privy Stellar wallet for Google user: " . $email);
-                sendResponse(['error' => 'Failed to create wallet'], 500);
-            }
-
-            $walletAddress = $stellarWallet['address'];
-            $walletId = $stellarWallet['id'] ?? null;
-
-            error_log("Privy Stellar wallet created for Google user: " . $walletAddress . " (ID: " . $walletId . ")");
-
-            // Create new user
+            // Wallet will be created by frontend via Privy SDK
+            // Create new user without wallet initially
             $userData = [
-                'privyId' => $privyUserId,
                 'email' => $email,
                 'authProvider' => 'google',
                 'name' => $name,
-                'profilePicture' => $profilePicture,
-                'stellarPublicKey' => $walletAddress,
-                'privyWalletId' => $walletId
+                'profilePicture' => $profilePicture
+                // Wallet fields will be added later by /privy/create-wallet endpoint
             ];
 
             $user = $userModel->create($userData);
@@ -324,7 +293,7 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
                 sendResponse(['error' => 'Failed to create user'], 500);
             }
 
-            error_log("Google user created successfully with Privy Stellar wallet: " . $walletAddress);
+            error_log("Google user created successfully: " . $email);
 
             // Send welcome email (async with delay is acceptable)
             try {
@@ -336,8 +305,9 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
             }
         }
 
-        // Generate token
-        $token = generateToken($user->privyId);
+        // Generate token using user ID (wallet will be added later by frontend)
+        $userId = isset($user->privyId) ? $user->privyId : (string)$user->_id;
+        $token = generateToken($userId);
 
         sendResponse([
             'success' => true,

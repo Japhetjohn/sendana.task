@@ -21,10 +21,27 @@ class SendanaAuth {
         // Wait for Google Identity Services to load
         if (typeof google !== 'undefined' && google.accounts) {
             this.googleLoaded = true;
+            console.log('Google OAuth SDK loaded successfully');
         } else {
             // Retry after a delay
             setTimeout(() => this.initGoogleOAuth(), 500);
         }
+    }
+
+    // Wait for Google SDK to load (with timeout)
+    waitForGoogleSDK(timeout = 10000) {
+        return new Promise((resolve, reject) => {
+            const startTime = Date.now();
+            const checkInterval = setInterval(() => {
+                if (typeof google !== 'undefined' && google.accounts) {
+                    clearInterval(checkInterval);
+                    resolve(true);
+                } else if (Date.now() - startTime > timeout) {
+                    clearInterval(checkInterval);
+                    reject(new Error('Google OAuth SDK failed to load. Please check your internet connection.'));
+                }
+            }, 100);
+        });
     }
 
     // Check if user should have access to dashboard
@@ -64,12 +81,38 @@ class SendanaAuth {
                 throw new Error(data.error || 'Signup failed');
             }
 
-            // Save token and user
-            this.saveSession(data.token, data.user);
+            // After successful signup, create Privy wallet
+            console.log('Account created, now creating Privy wallet...');
 
-            // Redirect to sign in page after successful signup
-            alert('Account created successfully! Please sign in.');
-            window.location.href = 'index.html';
+            try {
+                // Create Privy wallet via frontend
+                const walletData = await window.privyWalletManager.showWalletCreationUI(
+                    data.user.privyId || data.user.email,
+                    data.token,
+                    (wallet) => {
+                        console.log('Wallet created successfully:', wallet);
+                    },
+                    (error) => {
+                        console.error('Wallet creation failed:', error);
+                    }
+                );
+
+                console.log('Privy wallet created:', walletData);
+
+                // Save token and user
+                this.saveSession(data.token, data.user);
+
+                // Redirect to dashboard with wallet
+                alert('Account and wallet created successfully!');
+                window.location.href = 'dashboard.html';
+
+            } catch (walletError) {
+                console.error('Wallet creation error:', walletError);
+                // Still save session even if wallet creation fails
+                this.saveSession(data.token, data.user);
+                alert('Account created, but wallet creation failed. You can try again from the dashboard.');
+                window.location.href = 'dashboard.html';
+            }
 
         } catch (error) {
             console.error('Signup error:', error);
@@ -174,20 +217,21 @@ class SendanaAuth {
 
     // Sign in with Google using Google OAuth
     async signInWithGoogle() {
-        return new Promise((resolve, reject) => {
-            // Check if Google OAuth SDK is loaded
-            if (typeof google === 'undefined' || !google.accounts) {
-                reject(new Error('Google OAuth SDK not loaded. Please check your internet connection.'));
-                return;
-            }
+        try {
+            // Wait for Google OAuth SDK to load
+            await this.waitForGoogleSDK();
 
             // Check if Client ID is configured
             if (!window.GOOGLE_OAUTH_CONFIG ||
                 !window.GOOGLE_OAUTH_CONFIG.clientId ||
                 window.GOOGLE_OAUTH_CONFIG.clientId.includes('YOUR_GOOGLE_CLIENT_ID_HERE')) {
-                reject(new Error('Google OAuth not configured!\n\nPlease follow these steps:\n1. Open: SETUP_GOOGLE_AUTH.md\n2. Follow the 5-minute setup guide\n3. Update /frontend/config/google-oauth.js with your Client ID'));
-                return;
+                throw new Error('Google OAuth not configured!\n\nPlease follow these steps:\n1. Open: SETUP_GOOGLE_AUTH.md\n2. Follow the 5-minute setup guide\n3. Update /frontend/config/google-oauth.js with your Client ID');
             }
+        } catch (error) {
+            return Promise.reject(error);
+        }
+
+        return new Promise((resolve, reject) => {
 
             const client = google.accounts.oauth2.initTokenClient({
                 client_id: window.GOOGLE_OAUTH_CONFIG.clientId,

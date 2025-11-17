@@ -36,7 +36,6 @@ class User {
     // Create new user
     public function create($data) {
         $document = [
-            'privyId' => $data['privyId'],
             'email' => $data['email'],
             'authProvider' => $data['authProvider'] ?? 'email',
             'profile' => [
@@ -54,6 +53,16 @@ class User {
             'transactions' => [],
         ];
 
+        // Only add privyId if provided (not null)
+        if (isset($data['privyId']) && $data['privyId'] !== null) {
+            $document['privyId'] = $data['privyId'];
+        }
+
+        // Add privyWalletId if provided
+        if (isset($data['privyWalletId']) && $data['privyWalletId'] !== null) {
+            $document['privyWalletId'] = $data['privyWalletId'];
+        }
+
         // MongoDB timestamps
         $document['createdAt'] = new MongoDB\BSON\UTCDateTime();
         $document['updatedAt'] = new MongoDB\BSON\UTCDateTime();
@@ -65,8 +74,8 @@ class User {
 
         $result = $this->db->insertOne($this->collection, $document);
 
-        // Fetch and return the created user
-        return $this->findByPrivyId($data['privyId']);
+        // Fetch and return the created user by _id
+        return $this->findById($result->getInsertedId());
     }
 
     // Update user

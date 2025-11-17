@@ -109,15 +109,16 @@ if (!$walletAddress && isset($user->privyWalletId)) {
 // Auto-migrate old wallets to Privy OR create new wallet if none exists
 if ($shouldMigrateToPrivy || !$walletAddress) {
     try {
-        $privyUserId = $user->privyId ?? ('user_' . bin2hex(random_bytes(16)));
-        $stellarWallet = $privyAuth->createStellarWallet($privyUserId);
+        // Create Stellar wallet via Privy (auto-generates valid CUID2)
+        $stellarWallet = $privyAuth->createStellarWallet();
 
         if ($stellarWallet && isset($stellarWallet['address'])) {
             // Update user with new Privy wallet
+            $privyOwnerId = $stellarWallet['owner_id'] ?? null;
             $updateData = [
                 'privyWalletId' => $stellarWallet['id'],
                 'stellarPublicKey' => $stellarWallet['address'],
-                'privyId' => $privyUserId,
+                'privyId' => $privyOwnerId,  // Use Privy's generated owner_id
                 'migratedToPrivy' => true
             ];
 
