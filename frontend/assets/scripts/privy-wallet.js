@@ -1,6 +1,5 @@
 // Privy Wallet Integration for Sendana
 const PRIVY_APP_ID = 'cmhow02lw00b3l10cz7f0gbpu';
-const API_URL = '/backend/api';
 
 class PrivyWalletManager {
     constructor() {
