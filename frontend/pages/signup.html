@@ -8,10 +8,10 @@
     <title>Sendana - Borderless Banking</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link rel="stylesheet" href="/frontend/assets/styles/login.css">
-    <!-- Google OAuth SDK -->
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Privy SDK for vanilla JS -->
     <script src="https://unpkg.com/@privy-io/privy-browser@0.3.0/dist/privy.umd.js"></script>
+    <!-- Google OAuth SDK - loaded synchronously to prevent timing issues -->
+    <script src="https://accounts.google.com/gsi/client"></script>
 </head>
 
 <body>

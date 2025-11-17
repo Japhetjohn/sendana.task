@@ -1,0 +1,368 @@
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/privy.php';
+require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../services/EmailService.php';
+require_once __DIR__ . '/../services/StellarService.php';
+
+$method = $_SERVER['REQUEST_METHOD'];
+$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+$userModel = new User();
+$privyAuth = new PrivyAuth();
+$emailService = new EmailService();
+$stellarService = new StellarService(false);
+
+function getAuthToken() {
+    $headers = getallheaders();
+    if (isset($headers['Authorization'])) {
+        $authHeader = $headers['Authorization'];
+        if (strpos($authHeader, 'Bearer ') === 0) {
+            return substr($authHeader, 7);
+        }
+    }
+    return null;
+}
+
+function sendResponse($data, $statusCode = 200) {
+    http_response_code($statusCode);
+    echo json_encode($data);
+    exit();
+}
+
+function generateToken($userId) {
+    return base64_encode(json_encode([
+        'userId' => $userId,
+        'timestamp' => time(),
+        'random' => bin2hex(random_bytes(16))
+    ]));
+}
+
+function verifyToken($token) {
+    try {
+        $decoded = json_decode(base64_decode($token), true);
+        if (!$decoded || !isset($decoded['userId'])) {
+            return null;
+        }
+        if (time() - $decoded['timestamp'] > 86400) {
+            return null;
+        }
+        return $decoded['userId'];
+    } catch (Exception $e) {
+        return null;
+    }
+}
+
+if ($method === 'POST' && strpos($path, '/signup') !== false) {
+    try {
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($input['email']) || !isset($input['password'])) {
+            sendResponse(['error' => 'Email and password are required'], 400);
+        }
+
+        $email = filter_var($input['email'], FILTER_VALIDATE_EMAIL);
+        if (!$email) {
+            sendResponse(['error' => 'Invalid email format'], 400);
+        }
+
+        $password = $input['password'];
+        if (strlen($password) < 8) {
+            sendResponse(['error' => 'Password must be at least 8 characters'], 400);
+        }
+
+        $existingUser = $userModel->findByEmail($email);
+        if ($existingUser) {
+            sendResponse(['error' => 'Email already registered'], 409);
+        }
+
+        $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+
+        // Wallet will be created by frontend via Privy SDK
+        // Create user without wallet initially
+        $userData = [
+            'email' => $email,
+            'passwordHash' => $passwordHash,
+            'authProvider' => 'email'
+            // Wallet fields will be added later by /privy/create-wallet endpoint
+        ];
+
+        $user = $userModel->create($userData);
+
+        if (!$user) {
+            sendResponse(['error' => 'Failed to create user'], 500);
+        }
+
+        error_log("User created successfully: " . $email);
+
+        // Generate token using user ID (wallet will be added later by frontend)
+        $userId = isset($user->privyId) ? $user->privyId : (string)$user->_id;
+        $token = generateToken($userId);
+
+        try {
+            $firstName = explode('@', $email)[0];
+            $firstName = ucfirst($firstName);
+            $emailService->sendWelcomeEmail($email, $firstName);
+        } catch (Exception $e) {
+            error_log("Failed to queue welcome email: " . $e->getMessage());
+        }
+
+        sendResponse([
+            'success' => true,
+            'message' => 'Account created successfully',
+            'token' => $token,
+            'user' => $userModel->toArray($user)
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Signup error: " . $e->getMessage());
+        sendResponse(['error' => 'Server error during signup: ' . $e->getMessage()], 500);
+    }
+}
+
+elseif ($method === 'POST' && strpos($path, '/login') !== false) {
+    try {
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($input['email']) || !isset($input['password'])) {
+            sendResponse(['error' => 'Email and password are required'], 400);
+        }
+
+        $email = filter_var($input['email'], FILTER_VALIDATE_EMAIL);
+        if (!$email) {
+            sendResponse(['error' => 'Invalid email format'], 400);
+        }
+
+        $user = $userModel->findByEmail($email);
+
+        if (!$user) {
+            sendResponse(['error' => 'Invalid email or password'], 401);
+        }
+
+        if (!isset($user->passwordHash) || !password_verify($input['password'], $user->passwordHash)) {
+            sendResponse(['error' => 'Invalid email or password'], 401);
+        }
+
+        $token = generateToken($user->privyId);
+
+        sendResponse([
+            'success' => true,
+            'message' => 'Login successful',
+            'token' => $token,
+            'user' => $userModel->toArray($user)
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Login error: " . $e->getMessage());
+        sendResponse(['error' => 'Server error during login: ' . $e->getMessage()], 500);
+    }
+}
+
+elseif ($method === 'GET' && strpos($path, '/user') !== false) {
+    try {
+        $token = getAuthToken();
+        if (!$token) {
+            sendResponse(['error' => 'No token provided'], 401);
+        }
+
+        $userId = verifyToken($token);
+        if (!$userId) {
+            sendResponse(['error' => 'Invalid or expired token'], 401);
+        }
+
+        $user = $userModel->findByPrivyId($userId);
+
+        if (!$user) {
+            sendResponse(['error' => 'User not found'], 404);
+        }
+
+        sendResponse([
+            'success' => true,
+            'user' => $userModel->toArray($user)
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Get user error: " . $e->getMessage());
+        sendResponse(['error' => 'Server error fetching user'], 500);
+    }
+}
+
+elseif ($method === 'PUT' && strpos($path, '/user') !== false) {
+    try {
+        $token = getAuthToken();
+        if (!$token) {
+            sendResponse(['error' => 'No token provided'], 401);
+        }
+
+        $userId = verifyToken($token);
+        if (!$userId) {
+            sendResponse(['error' => 'Invalid or expired token'], 401);
+        }
+
+        $user = $userModel->findByPrivyId($userId);
+
+        if (!$user) {
+            sendResponse(['error' => 'User not found'], 404);
+        }
+
+        // Get request body
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        $updateData = [];
+        if (isset($input['name'])) $updateData['name'] = $input['name'];
+        if (isset($input['profilePicture'])) $updateData['profilePicture'] = $input['profilePicture'];
+        if (isset($input['stellarPublicKey'])) $updateData['stellarPublicKey'] = $input['stellarPublicKey'];
+        if (isset($input['stellarSecretKey'])) $updateData['stellarSecretKey'] = $input['stellarSecretKey'];
+
+        $updatedUser = $userModel->update($userId, $updateData);
+
+        sendResponse([
+            'success' => true,
+            'user' => $userModel->toArray($updatedUser)
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Update user error: " . $e->getMessage());
+        sendResponse(['error' => 'Server error updating user'], 500);
+    }
+}
+
+elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
+    try {
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($input['email']) || !isset($input['sub'])) {
+            sendResponse(['error' => 'Google user data is required'], 400);
+        }
+
+        $email = $input['email'];
+        $name = $input['name'] ?? null;
+        $profilePicture = $input['picture'] ?? null;
+        $googleId = $input['sub'];
+
+        // Validate email
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            sendResponse(['error' => 'Invalid email format'], 400);
+        }
+
+        // Check if user exists
+        $user = $userModel->findByEmail($email);
+
+        if ($user) {
+            // User exists, update if needed
+            $updateData = [];
+            if ($name && (!isset($user->profile->name) || !$user->profile->name)) {
+                $updateData['name'] = $name;
+            }
+            if ($profilePicture && (!isset($user->profile->profilePicture) || !$user->profile->profilePicture)) {
+                $updateData['profilePicture'] = $profilePicture;
+            }
+            // Update auth provider if it was email before
+            if ($user->authProvider === 'email') {
+                $updateData['authProvider'] = 'google';
+            }
+
+            if (!empty($updateData)) {
+                $user = $userModel->update($user->privyId, $updateData);
+            }
+        } else {
+            // Wallet will be created by frontend via Privy SDK
+            // Create new user without wallet initially
+            $userData = [
+                'email' => $email,
+                'authProvider' => 'google',
+                'name' => $name,
+                'profilePicture' => $profilePicture
+                // Wallet fields will be added later by /privy/create-wallet endpoint
+            ];
+
+            $user = $userModel->create($userData);
+
+            if (!$user) {
+                sendResponse(['error' => 'Failed to create user'], 500);
+            }
+
+            error_log("Google user created successfully: " . $email);
+
+            // Send welcome email (async with delay is acceptable)
+            try {
+                $firstName = $name ? explode(' ', $name)[0] : explode('@', $email)[0];
+                $firstName = ucfirst($firstName);
+                $emailService->sendWelcomeEmail($email, $firstName);
+            } catch (Exception $e) {
+                error_log("Failed to queue welcome email: " . $e->getMessage());
+            }
+        }
+
+        // Generate token using user ID (wallet will be added later by frontend)
+        $userId = isset($user->privyId) ? $user->privyId : (string)$user->_id;
+        $token = generateToken($userId);
+
+        sendResponse([
+            'success' => true,
+            'message' => 'Google sign in successful',
+            'token' => $token,
+            'user' => $userModel->toArray($user)
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Google auth error: " . $e->getMessage());
+        sendResponse(['error' => 'Server error during Google authentication: ' . $e->getMessage()], 500);
+    }
+}
+
+elseif ($method === 'GET' && strpos($path, '/wallet') !== false) {
+    try {
+        $token = getAuthToken();
+        if (!$token) {
+            sendResponse(['error' => 'No token provided'], 401);
+        }
+
+        $userId = verifyToken($token);
+        if (!$userId) {
+            sendResponse(['error' => 'Invalid or expired token'], 401);
+        }
+
+        $user = $userModel->findByPrivyId($userId);
+
+        if (!$user) {
+            sendResponse(['error' => 'User not found'], 404);
+        }
+
+        // Return wallet information
+        sendResponse([
+            'success' => true,
+            'wallet' => [
+                'address' => $user->stellarPublicKey ?? null,
+                'publicKey' => $user->stellarPublicKey ?? null,
+                'balance' => $user->balance ?? ['USD' => 0, 'EUR' => 0, 'GBP' => 0],
+                'email' => $user->email ?? null
+            ]
+        ]);
+
+    } catch (Exception $e) {
+        error_log("Get wallet error: " . $e->getMessage());
+        sendResponse(['error' => 'Server error fetching wallet'], 500);
+    }
+}
+
+elseif ($method === 'GET' && strpos($path, '/auth/privy-config') !== false) {
+    sendResponse([
+        'appId' => $privyAuth->getAppId()
+    ]);
+}
+
+else {
+    sendResponse(['error' => 'Route not found'], 404);
+}
