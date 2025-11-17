@@ -12,9 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/privy.php';
 require_once __DIR__ . '/../models/User.php';
 
 $userModel = new User();
+$privyAuth = new PrivyAuth();
 
 function getAuthToken() {
     $headers = getallheaders();
@@ -70,13 +72,30 @@ if (!$user) {
     sendResponse(['error' => 'User not found'], 404);
 }
 
+// Get wallet address - try stored address first, then fetch from Privy if needed
+$walletAddress = $user->stellarPublicKey ?? null;
+
+// If no stored wallet address but we have a Privy wallet ID, fetch from Privy
+if (!$walletAddress && isset($user->privyWalletId)) {
+    $privyWallet = $privyAuth->getStellarWallet($user->privyWalletId);
+
+    if ($privyWallet && isset($privyWallet['address'])) {
+        $walletAddress = $privyWallet['address'];
+
+        // Update user's stellarPublicKey for faster future lookups
+        $userModel->update($user->privyId, ['stellarPublicKey' => $walletAddress]);
+        error_log("Updated wallet address from Privy: " . $walletAddress);
+    }
+}
+
 // Return wallet information
 sendResponse([
     'success' => true,
     'wallet' => [
-        'publicKey' => $user->stellarPublicKey ?? null,
+        'publicKey' => $walletAddress,
         'network' => 'MAINNET',
         'balance' => '0', // TODO: Implement balance checking from Horizon API
-        'created' => $user->created_at ?? null
+        'created' => $user->created_at ?? null,
+        'provider' => 'privy'
     ]
 ]);

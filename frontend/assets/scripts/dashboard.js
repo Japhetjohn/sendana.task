@@ -144,11 +144,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // Generate QR code for wallet address
   function generateWalletQRCode(address) {
-    const qrCanvas = document.getElementById("walletQRCode");
-    if (!qrCanvas || !address || address === "No address found") return;
-
-    // Clear previous QR code
-    qrCanvas.getContext('2d').clearRect(0, 0, qrCanvas.width, qrCanvas.height);
+    const qrContainer = document.getElementById("walletQRCode");
+    if (!qrContainer || !address || address === "No address found") {
+      console.log('Cannot generate QR code - missing container or address');
+      return;
+    }
 
     // Check if QRCode library is loaded
     if (typeof QRCode === 'undefined') {
@@ -156,9 +156,12 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    // Generate new QR code using canvas
+    // Clear previous QR code completely
+    qrContainer.innerHTML = '';
+
+    // Generate new QR code
     try {
-      const qr = new QRCode(qrCanvas, {
+      const qr = new QRCode(qrContainer, {
         text: address,
         width: 240,
         height: 240,
@@ -166,6 +169,7 @@ document.addEventListener("DOMContentLoaded", function () {
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.H
       });
+      console.log('QR code generated successfully for address:', address);
     } catch (error) {
       console.error('Error generating QR code:', error);
     }

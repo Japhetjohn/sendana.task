@@ -89,20 +89,29 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
 
         $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-        $stellarWallet = $stellarService->createAndFundTestnetWallet();
+        // Generate unique Privy user ID
+        $privyUserId = 'user_' . bin2hex(random_bytes(16));
 
-        if (!$stellarWallet['success']) {
-            error_log("Failed to create Stellar wallet: " . ($stellarWallet['error'] ?? 'Unknown error'));
+        // Create Stellar wallet via Privy
+        $stellarWallet = $privyAuth->createStellarWallet($privyUserId);
+
+        if (!$stellarWallet || !isset($stellarWallet['address'])) {
+            error_log("Failed to create Privy Stellar wallet for user: " . $email);
             sendResponse(['error' => 'Failed to create wallet'], 500);
         }
 
+        $walletAddress = $stellarWallet['address'];
+        $walletId = $stellarWallet['id'] ?? null;
+
+        error_log("Privy Stellar wallet created: " . $walletAddress . " (ID: " . $walletId . ")");
+
         $userData = [
-            'privyId' => 'user_' . bin2hex(random_bytes(16)),
+            'privyId' => $privyUserId,
             'email' => $email,
             'passwordHash' => $passwordHash,
             'authProvider' => 'email',
-            'stellarPublicKey' => $stellarWallet['publicKey'],
-            'stellarSecretKey' => $stellarWallet['secretKey']
+            'stellarPublicKey' => $walletAddress,
+            'privyWalletId' => $walletId
         ];
 
         $user = $userModel->create($userData);
@@ -111,7 +120,7 @@ if ($method === 'POST' && strpos($path, '/signup') !== false) {
             sendResponse(['error' => 'Failed to create user'], 500);
         }
 
-        error_log("Stellar wallet created and funded for user: " . $stellarWallet['publicKey']);
+        error_log("User created successfully with Privy Stellar wallet: " . $walletAddress);
 
         $token = generateToken($user->privyId);
 
@@ -282,23 +291,31 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
                 $user = $userModel->update($user->privyId, $updateData);
             }
         } else {
-            // Create Stellar wallet for new user
-            $stellarWallet = $stellarService->createAndFundTestnetWallet();
+            // Generate unique Privy user ID for Google user
+            $privyUserId = 'google_' . $googleId;
 
-            if (!$stellarWallet['success']) {
-                error_log("Failed to create Stellar wallet: " . ($stellarWallet['error'] ?? 'Unknown error'));
+            // Create Stellar wallet via Privy
+            $stellarWallet = $privyAuth->createStellarWallet($privyUserId);
+
+            if (!$stellarWallet || !isset($stellarWallet['address'])) {
+                error_log("Failed to create Privy Stellar wallet for Google user: " . $email);
                 sendResponse(['error' => 'Failed to create wallet'], 500);
             }
 
+            $walletAddress = $stellarWallet['address'];
+            $walletId = $stellarWallet['id'] ?? null;
+
+            error_log("Privy Stellar wallet created for Google user: " . $walletAddress . " (ID: " . $walletId . ")");
+
             // Create new user
             $userData = [
-                'privyId' => 'google_' . $googleId,
+                'privyId' => $privyUserId,
                 'email' => $email,
                 'authProvider' => 'google',
                 'name' => $name,
                 'profilePicture' => $profilePicture,
-                'stellarPublicKey' => $stellarWallet['publicKey'],
-                'stellarSecretKey' => $stellarWallet['secretKey']
+                'stellarPublicKey' => $walletAddress,
+                'privyWalletId' => $walletId
             ];
 
             $user = $userModel->create($userData);
@@ -307,7 +324,7 @@ elseif ($method === 'POST' && strpos($path, '/auth/google') !== false) {
                 sendResponse(['error' => 'Failed to create user'], 500);
             }
 
-            error_log("Stellar wallet created and funded for Google user: " . $stellarWallet['publicKey']);
+            error_log("Google user created successfully with Privy Stellar wallet: " . $walletAddress);
 
             // Send welcome email (async with delay is acceptable)
             try {
