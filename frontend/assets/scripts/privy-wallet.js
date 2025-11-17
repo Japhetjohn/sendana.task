@@ -7,47 +7,21 @@ class PrivyWalletManager {
         this.initialized = false;
     }
 
-    // Initialize Privy SDK
+    // Initialize Privy SDK (not needed - backend handles Privy API)
     async initialize() {
         if (this.initialized) return true;
-
-        try {
-            // Check if Privy SDK is loaded
-            if (typeof window.Privy === 'undefined') {
-                console.error('Privy SDK not loaded');
-                return false;
-            }
-
-            // Initialize Privy client
-            this.privy = new window.Privy({
-                appId: PRIVY_APP_ID
-            });
-
-            this.initialized = true;
-            console.log('Privy SDK initialized successfully');
-            return true;
-        } catch (error) {
-            console.error('Failed to initialize Privy SDK:', error);
-            return false;
-        }
+        this.initialized = true;
+        console.log('Privy wallet manager initialized - using backend API');
+        return true;
     }
 
-    // Create Stellar embedded wallet for user
+    // Create Stellar embedded wallet for user via backend API
     async createStellarWallet(userId, userToken) {
         try {
-            console.log('Creating Stellar wallet via Privy...');
+            console.log('Creating Stellar wallet via Privy backend API...');
 
-            // Initialize if not already done
-            if (!this.initialized) {
-                const initSuccess = await this.initialize();
-                if (!initSuccess) {
-                    throw new Error('Failed to initialize Privy SDK');
-                }
-            }
-
-            // Request wallet creation from Privy
-            // Note: Privy's embedded wallet is created through their UI/API
-            // For vanilla JS, we use the Privy REST API via our backend
+            // Request wallet creation from Privy via our backend
+            // Backend handles all Privy REST API calls
             const response = await fetch(`${API_URL}/privy/create-wallet`, {
                 method: 'POST',
                 headers: {
