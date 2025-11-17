@@ -75,11 +75,22 @@ class SendanaAuth {
                 body: JSON.stringify({ email, password })
             });
 
-            const data = await response.json();
-
+            // Check if response is OK first
             if (!response.ok) {
-                throw new Error(data.error || 'Signup failed');
+                // Try to parse error message from JSON response
+                let errorMessage = 'Signup failed';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorMessage;
+                } catch (jsonError) {
+                    // If JSON parsing fails, use status text
+                    errorMessage = `Signup failed: ${response.status} ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
+
+            // Parse successful response
+            const data = await response.json();
 
             // After successful signup, create Privy wallet
             console.log('Account created, now creating Privy wallet...');
@@ -131,11 +142,22 @@ class SendanaAuth {
                 body: JSON.stringify({ email, password })
             });
 
-            const data = await response.json();
-
+            // Check if response is OK first
             if (!response.ok) {
-                throw new Error(data.error || 'Login failed');
+                // Try to parse error message from JSON response
+                let errorMessage = 'Login failed';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorMessage;
+                } catch (jsonError) {
+                    // If JSON parsing fails, use status text
+                    errorMessage = `Login failed: ${response.status} ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
+
+            // Parse successful response
+            const data = await response.json();
 
             // Save token and user
             this.saveSession(data.token, data.user);
@@ -194,11 +216,22 @@ class SendanaAuth {
                 }
             });
 
-            const data = await response.json();
-
+            // Check if response is OK first
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to fetch user data');
+                // Try to parse error message from JSON response
+                let errorMessage = 'Failed to fetch user data';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorMessage;
+                } catch (jsonError) {
+                    // If JSON parsing fails, use status text
+                    errorMessage = `Failed to fetch user data: ${response.status} ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
             }
+
+            // Parse successful response
+            const data = await response.json();
 
             // Update current user in memory only
             this.currentUser = data.user;
@@ -267,11 +300,22 @@ class SendanaAuth {
                             })
                         });
 
-                        const data = await backendResponse.json();
-
+                        // Check if response is OK first
                         if (!backendResponse.ok) {
-                            throw new Error(data.error || 'Google sign in failed');
+                            // Try to parse error message from JSON response
+                            let errorMessage = 'Google sign in failed';
+                            try {
+                                const errorData = await backendResponse.json();
+                                errorMessage = errorData.error || errorMessage;
+                            } catch (jsonError) {
+                                // If JSON parsing fails, use status text
+                                errorMessage = `Google sign in failed: ${backendResponse.status} ${backendResponse.statusText}`;
+                            }
+                            throw new Error(errorMessage);
                         }
+
+                        // Parse successful response
+                        const data = await backendResponse.json();
 
                         // Save token and user
                         this.saveSession(data.token, data.user);
