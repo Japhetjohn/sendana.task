@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="/frontend/assets/styles/login.css">
     <!-- Google OAuth SDK - loaded synchronously to prevent timing issues -->
     <script src="https://accounts.google.com/gsi/client"></script>
+    <!-- Privy SDK - loaded synchronously -->
+    <script src="https://auth.privy.io/sdk/v0.31.0/privy.js"></script>
 </head>
 
 <body>
@@ -140,9 +142,9 @@
     </section>
 
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-    <script src="/frontend/assets/scripts/privy-wallet.js?v=20251118"></script>
+    <script src="/frontend/assets/scripts/privy-wallet.js?v=20251119"></script>
     <script src="/frontend/config/google-oauth.js?v=20251115"></script>
-    <script src="/frontend/assets/scripts/auth.js?v=20251118"></script>
+    <script src="/frontend/assets/scripts/auth.js?v=20251119"></script>
     <script>
         // Initialize Swiper
         var swiper = new Swiper(".loginart", {
