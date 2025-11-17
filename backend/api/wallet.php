@@ -74,6 +74,13 @@ if (!$user) {
 
 // Get wallet address - try stored address first, then fetch from Privy if needed
 $walletAddress = $user->stellarPublicKey ?? null;
+$shouldMigrateToPrivy = false;
+
+// Check if user needs migration to Privy (has wallet but no Privy wallet ID)
+if ($walletAddress && !isset($user->privyWalletId)) {
+    $shouldMigrateToPrivy = true;
+    error_log("User {$user->email} has old Stellar wallet, will migrate to Privy");
+}
 
 // If no stored wallet address but we have a Privy wallet ID, fetch from Privy
 if (!$walletAddress && isset($user->privyWalletId)) {
@@ -85,6 +92,30 @@ if (!$walletAddress && isset($user->privyWalletId)) {
         // Update user's stellarPublicKey for faster future lookups
         $userModel->update($user->privyId, ['stellarPublicKey' => $walletAddress]);
         error_log("Updated wallet address from Privy: " . $walletAddress);
+    }
+}
+
+// Auto-migrate old wallets to Privy
+if ($shouldMigrateToPrivy) {
+    try {
+        $privyUserId = $user->privyId ?? ('user_' . bin2hex(random_bytes(16)));
+        $stellarWallet = $privyAuth->createStellarWallet($privyUserId);
+
+        if ($stellarWallet && isset($stellarWallet['address'])) {
+            // Update user with new Privy wallet
+            $userModel->update($user->privyId ?? $user->_id, [
+                'privyWalletId' => $stellarWallet['id'],
+                'stellarPublicKey' => $stellarWallet['address'],
+                'privyId' => $privyUserId,
+                'migratedToPrivy' => true
+            ]);
+
+            $walletAddress = $stellarWallet['address'];
+            error_log("Auto-migrated user {$user->email} to Privy wallet: " . $walletAddress);
+        }
+    } catch (Exception $e) {
+        error_log("Auto-migration failed for user {$user->email}: " . $e->getMessage());
+        // Continue with old wallet if migration fails
     }
 }
 
