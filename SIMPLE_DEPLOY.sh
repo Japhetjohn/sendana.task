@@ -37,7 +37,7 @@ send "EMAIL_SERVICE=brevo\r"
 send "EMAIL_USER=japhetjohnk@gmail.com\r"
 send "EMAIL_PASSWORD=bciz mpkv pjpr mfps\r"
 send "EMAIL_FROM=Sendana Team <japhetjohnk@gmail.com>\r"
-send "BREVO_API_KEY=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\r"
+send "BREVO_API_KEY=YOUR_BREVO_API_KEY_HERE\r"
 send "ENVEOF\r"
 sleep 2
 

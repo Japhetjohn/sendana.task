@@ -80,7 +80,7 @@ send "\r"
 expect ">"
 send "# Brevo (Sendinblue) API Configuration\r"
 expect ">"
-send "BREVO_API_KEY=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\r"
+send "BREVO_API_KEY=YOUR_BREVO_API_KEY_HERE\r"
 expect ">"
 send "ENV_EOF\r"
 
